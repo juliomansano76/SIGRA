@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redefinir Senha — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="login-container">
+    <div class="login-box">
+        <img src="/css/logo-sigra.png" alt="SIGRA" style="width:220px;display:block;margin:0 auto 24px;border-radius:8px;" />
+        <h3 style="text-align:center;margin-bottom:20px;color:#1a237e;">🔐 Redefinir Senha</h3>
+
+        <div id="alerta" class="alerta erro"></div>
+
+        <div id="painel-form">
+            <div class="campo">
+                <label>Nova senha</label>
+                <input type="password" id="senha-nova" placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div class="campo">
+                <label>Confirmar nova senha</label>
+                <input type="password" id="senha-confirma" placeholder="Repita a senha" />
+            </div>
+            <button class="btn btn-primary" id="btnRedefinir">Salvar nova senha</button>
+        </div>
+
+        <div id="painel-sucesso" style="display:none;text-align:center;">
+            <p style="color:#2e7d32;font-size:15px;margin-bottom:20px;">✅ Senha redefinida com sucesso!</p>
+            <a href="/index.html" class="btn btn-primary">Ir para o Login</a>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    const alerta = document.getElementById('alerta');
+
+    if (!token) {
+        alerta.className = 'alerta erro visivel';
+        alerta.textContent = 'Link inválido. Solicite um novo link de redefinição.';
+        document.getElementById('painel-form').style.display = 'none';
+    }
+
+    document.getElementById('btnRedefinir').addEventListener('click', async () => {
+        const senha_nova     = document.getElementById('senha-nova').value;
+        const senha_confirma = document.getElementById('senha-confirma').value;
+        const btn = document.getElementById('btnRedefinir');
+
+        alerta.className = 'alerta erro';
+        alerta.textContent = '';
+
+        if (!senha_nova || senha_nova.length < 6) {
+            alerta.className = 'alerta erro visivel';
+            alerta.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+            return;
+        }
+        if (senha_nova !== senha_confirma) {
+            alerta.className = 'alerta erro visivel';
+            alerta.textContent = 'As senhas não coincidem.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+
+        const resultado = await api('POST', '/usuarios/redefinir-senha', { token, senha_nova });
+
+        if (resultado && resultado.ok) {
+            document.getElementById('painel-form').style.display   = 'none';
+            document.getElementById('painel-sucesso').style.display = 'block';
+        } else {
+            alerta.className = 'alerta erro visivel';
+            alerta.textContent = resultado?.dados?.erro || 'Erro ao redefinir senha.';
+            btn.disabled = false;
+            btn.textContent = 'Salvar nova senha';
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+-- Limpa todo o fluxo de reclamações mantendo cadastros base
+TRUNCATE TABLE 
+    historico_status,
+    arquivos,
+    etapa_avaliacao_pos_visita,
+    etapa_visita_tecnica,
+    etapa_direcionamento_comercial,
+    etapa_encaminhar_devolucao,
+    etapa_conferencia_nf,
+    etapa_solicitar_coleta,
+    cotacoes_frete,
+    reclamacao_areas,
+    reclamacao_defeitos,
+    etapa_avaliacao_qualidade,
+    reclamacoes
+CASCADE;
+
+-- Deletar Reclamações individuais
+DELETE FROM reclamacoes 
+WHERE codigo IN (28, 25);
+
+
+

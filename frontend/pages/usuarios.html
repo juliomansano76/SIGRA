@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Usuários — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 class="pagina-titulo" style="margin:0;">Usuários</h2>
+            <button class="btn btn-success" onclick="abrirModal()">+ Novo Usuário</button>
+        </div>
+        <div class="card">
+            <div class="tabela-container">
+                <table>
+                    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody id="tabela-body"><tr><td colspan="5" style="text-align:center;color:#999;">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal editar/criar usuário -->
+<div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:480px;">
+        <h3 id="modal-titulo">Novo Usuário</h3>
+        <input type="hidden" id="usuario-id" />
+        <div class="campo"><label>Nome *</label><input type="text" id="nome" /></div>
+        <div class="campo"><label>E-mail *</label><input type="email" id="email" /></div>
+        <div class="campo" id="campo-senha">
+            <label>Senha *</label>
+            <input type="password" id="senha" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="campo">
+            <label>Perfil *</label>
+            <select id="perfil">
+                <option value="">Selecione...</option>
+                <option value="admin">Administrador</option>
+                <option value="sac">SAC</option>
+                <option value="qualidade">Qualidade</option>
+                <option value="comercial">Comercial</option>
+                <option value="financeiro">Financeiro</option>
+                <option value="fiscal">Fiscal</option>
+                <option value="expedicao">Expedição</option>
+                <option value="revisao">Revisão</option>
+                <option value="pcp">PCP</option>
+            </select>
+        </div>
+        <div id="modal-alerta" class="alerta erro"></div>
+        <div class="modal-rodape">
+            <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-success" onclick="salvar()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal alterar senha (admin) -->
+<div class="modal-overlay" id="modal-senha">
+    <div class="modal" style="max-width:400px;">
+        <h3>Alterar Senha</h3>
+        <p id="modal-senha-nome" style="color:#666;font-size:14px;margin-bottom:16px;"></p>
+        <input type="hidden" id="senha-usuario-id" />
+        <div class="campo">
+            <label>Nova Senha *</label>
+            <input type="password" id="nova-senha" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="campo">
+            <label>Confirmar Senha *</label>
+            <input type="password" id="confirma-senha" placeholder="Repita a senha" />
+        </div>
+        <div id="alerta-senha" class="alerta erro"></div>
+        <div class="modal-rodape">
+            <button class="btn btn-secondary" onclick="fecharModalSenha()">Cancelar</button>
+            <button class="btn btn-primary" onclick="salvarSenha()">Alterar Senha</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    const perfisLabel = {
+        admin:'Administrador', sac:'SAC', qualidade:'Qualidade',
+        comercial:'Comercial', financeiro:'Financeiro', fiscal:'Fiscal',
+        expedicao:'Expedição', revisao:'Revisão', pcp:'PCP'
+    };
+
+    async function carregar() {
+        const r = await api('GET', '/usuarios');
+        const tbody = document.getElementById('tabela-body');
+        if (!r.ok || !r.dados.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">Nenhum usuário cadastrado.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = r.dados.map(u => `
+            <tr style="${!u.ativo ? 'opacity:0.5;' : ''}">
+                <td><strong>${u.nome}</strong></td>
+                <td>${u.email}</td>
+                <td><span class="badge badge-cinza">${perfisLabel[u.perfil] || u.perfil}</span></td>
+                <td><span class="badge ${u.ativo ? 'badge-verde' : 'badge-vermelho'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="editar('${u.id}','${u.nome}','${u.email}','${u.perfil}')">Editar</button>
+                    <button class="btn btn-secondary" onclick="abrirModalSenha('${u.id}','${u.nome}')">🔑 Senha</button>
+                    <button class="btn ${u.ativo ? 'btn-danger' : 'btn-success'}" onclick="alterarStatus('${u.id}','${u.nome}',${u.ativo})">
+                        ${u.ativo ? 'Inativar' : 'Reativar'}
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function abrirModal() {
+        document.getElementById('modal-titulo').textContent = 'Novo Usuário';
+        document.getElementById('usuario-id').value = '';
+        document.getElementById('nome').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('senha').value = '';
+        document.getElementById('perfil').value = '';
+        document.getElementById('campo-senha').style.display = 'block';
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function editar(id, nome, email, perfil) {
+        document.getElementById('modal-titulo').textContent = 'Editar Usuário';
+        document.getElementById('usuario-id').value = id;
+        document.getElementById('nome').value = nome;
+        document.getElementById('email').value = email;
+        document.getElementById('perfil').value = perfil;
+        document.getElementById('campo-senha').style.display = 'none';
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function fecharModal() { document.getElementById('modal').classList.remove('aberto'); }
+
+    function abrirModalSenha(id, nome) {
+        document.getElementById('senha-usuario-id').value = id;
+        document.getElementById('modal-senha-nome').textContent = 'Usuário: ' + nome;
+        document.getElementById('nova-senha').value = '';
+        document.getElementById('confirma-senha').value = '';
+        document.getElementById('alerta-senha').className = 'alerta erro';
+        document.getElementById('modal-senha').classList.add('aberto');
+    }
+
+    function fecharModalSenha() { document.getElementById('modal-senha').classList.remove('aberto'); }
+
+    async function salvarSenha() {
+        const id       = document.getElementById('senha-usuario-id').value;
+        const nova     = document.getElementById('nova-senha').value;
+        const confirma = document.getElementById('confirma-senha').value;
+        const alerta   = document.getElementById('alerta-senha');
+        if (!nova || !confirma) { alerta.textContent = 'Preencha todos os campos.'; alerta.classList.add('visivel'); return; }
+        if (nova.length < 6)    { alerta.textContent = 'Mínimo 6 caracteres.';      alerta.classList.add('visivel'); return; }
+        if (nova !== confirma)  { alerta.textContent = 'As senhas não coincidem.';   alerta.classList.add('visivel'); return; }
+        const r = await api('PUT', '/usuarios/' + id + '/senha', { senha: nova });
+        if (r && r.ok) { fecharModalSenha(); alert('Senha alterada com sucesso!'); }
+        else { alerta.textContent = r?.dados?.erro || 'Erro ao alterar senha.'; alerta.classList.add('visivel'); }
+    }
+
+    async function alterarStatus(id, nome, ativo) {
+        const acao = ativo ? 'inativar' : 'reativar';
+        if (!confirm(`Deseja ${acao} o usuário "${nome}"?`)) return;
+        const lista = await api('GET', '/usuarios');
+        const usuario = lista.dados.find(u => u.id === id);
+        if (!usuario) { alert('Usuário não encontrado.'); return; }
+        const r = await api('PUT', '/usuarios/' + id, { nome: usuario.nome, email: usuario.email, perfil: usuario.perfil, ativo: !ativo });
+        if (r.ok) carregar();
+        else alert('Erro ao alterar status.');
+    }
+
+    async function salvar() {
+        const id     = document.getElementById('usuario-id').value;
+        const alerta = document.getElementById('modal-alerta');
+        let r;
+        if (!id) {
+            const corpo = {
+                nome:   document.getElementById('nome').value.trim(),
+                email:  document.getElementById('email').value.trim(),
+                senha:  document.getElementById('senha').value,
+                perfil: document.getElementById('perfil').value,
+            };
+            if (!corpo.nome || !corpo.email || !corpo.senha || !corpo.perfil) {
+                alerta.textContent = 'Todos os campos são obrigatórios.'; alerta.classList.add('visivel'); return;
+            }
+            r = await api('POST', '/usuarios', corpo);
+        } else {
+            const corpo = {
+                nome:   document.getElementById('nome').value.trim(),
+                email:  document.getElementById('email').value.trim(),
+                perfil: document.getElementById('perfil').value,
+                ativo:  true,
+            };
+            if (!corpo.nome || !corpo.email || !corpo.perfil) {
+                alerta.textContent = 'Todos os campos são obrigatórios.'; alerta.classList.add('visivel'); return;
+            }
+            r = await api('PUT', '/usuarios/' + id, corpo);
+        }
+        if (r.ok) { fecharModal(); carregar(); }
+        else { alerta.textContent = r.dados.erro || 'Erro ao salvar.'; alerta.classList.add('visivel'); }
+    }
+
+    carregar();
+</script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Gestão — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .painel-grid {
+            overflow-x: auto;
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 32px;
+        }
+
+        /* Coluna de perfis */
+        .painel-perfil-col {
+            background: #f8f9fa;
+            border-right: 1px solid #e0e0e0;
+        }
+        .painel-perfil-header {
+            padding: 14px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f0f0f0;
+            height: 44px;
+            display: flex;
+            align-items: center;
+        }
+        .painel-perfil-cell {
+            padding: 0 16px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            gap: 8px;
+        }
+        .painel-perfil-cell:last-child { border-bottom: none; }
+
+        /* Área de fases (scroll horizontal) */
+        .painel-fases-wrapper {
+        }
+        .painel-fases-table {
+            min-width: 100%;
+            border-collapse: collapse;
+        }
+        .painel-fases-table th {
+            padding: 6px 8px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #f0f0f0;
+            background: #f0f0f0;
+            white-space: normal;
+            word-break: break-word;
+            text-align: center;
+            min-width: 70px;
+            max-width: 100px;
+            height: 48px;
+            vertical-align: middle;
+            line-height: 1.3;
+        }
+        .painel-fases-table th:last-child { border-right: none; }
+        .painel-fases-table td {
+            height: 60px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            border-right: 1px solid #f5f5f5;
+            vertical-align: middle;
+            padding: 0 8px;
+        }
+        .painel-fases-table td:last-child { border-right: none; }
+        .painel-fases-table tr:last-child td { border-bottom: none; }
+
+        .num-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-decoration: none;
+            padding: 0 8px;
+        }
+        .num-badge:hover {
+            transform: scale(1.08);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        .num-badge.zero {
+            color: #ccc;
+            background: transparent;
+            cursor: default;
+            font-size: 14px;
+        }
+        .num-badge.zero:hover { transform: none; box-shadow: none; }
+
+        .num-badge.cor-laranja  { background: #fff3e0; color: #e65100; }
+        .num-badge.cor-verde    { background: #e8f5e9; color: #2e7d32; }
+        .num-badge.cor-azul     { background: #e3f2fd; color: #1565c0; }
+        .num-badge.cor-roxo     { background: #f3e5f5; color: #6a1b9a; }
+        .num-badge.cor-teal     { background: #e0f7fa; color: #00695c; }
+        .num-badge.cor-vermelho { background: #ffebee; color: #c62828; }
+        .num-badge.cor-indigo   { background: #e8eaf6; color: #283593; }
+
+        .total-col {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a237e;
+        }
+        .total-row-cell {
+            font-size: 13px;
+            font-weight: 700;
+            color: #555;
+            background: #f8f9fa;
+        }
+
+        /* Cards de resumo no topo */
+        .resumo-top {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .resumo-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            text-align: center;
+            border-top: 4px solid #1a237e;
+        }
+        .resumo-card.laranja  { border-top-color: #e65100; }
+        .resumo-card.vermelho { border-top-color: #c62828; }
+        .resumo-card.verde    { border-top-color: #2e7d32; }
+        .resumo-card .rnum { font-size: 34px; font-weight: 700; color: #1a237e; line-height: 1; margin-bottom: 5px; }
+        .resumo-card.laranja  .rnum { color: #e65100; }
+        .resumo-card.vermelho .rnum { color: #c62828; }
+        .resumo-card.verde    .rnum { color: #2e7d32; }
+        .resumo-card .rlbl { font-size: 12px; color: #666; font-weight: 500; }
+
+        .secao-titulo-dash {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a237e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 24px 0 12px;
+        }
+
+        .legenda {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #888;
+            align-items: center;
+        }
+        .legenda span { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 class="pagina-titulo" style="margin:0;">📊 Painel de Gestão</h2>
+            <button class="btn btn-secondary" onclick="carregar()" style="font-size:12px;padding:6px 14px;">🔄 Atualizar</button>
+        </div>
+
+        <!-- Resumo geral -->
+        <div class="secao-titulo-dash">Visão Geral</div>
+        <div class="resumo-top">
+            <div class="resumo-card laranja">
+                <div class="rnum" id="res-total">—</div>
+                <div class="rlbl">Total em aberto</div>
+            </div>
+            <div class="resumo-card">
+                <div class="rnum" id="res-sac">—</div>
+                <div class="rlbl">Pendentes no SAC</div>
+            </div>
+            <div class="resumo-card">
+                <div class="rnum" id="res-qualidade">—</div>
+                <div class="rlbl">Pendentes na Qualidade</div>
+            </div>
+            <div class="resumo-card">
+                <div class="rnum" id="res-comercial">—</div>
+                <div class="rlbl">Pendentes no Comercial</div>
+            </div>
+            <div class="resumo-card vermelho">
+                <div class="rnum" id="res-outros">—</div>
+                <div class="rlbl">Outros setores</div>
+            </div>
+        </div>
+
+        <!-- Matriz -->
+        <div class="secao-titulo-dash">Pendências por Setor e Fase</div>
+        <div class="legenda">
+            <span>Clique em um número para ver as reclamações correspondentes</span>
+            <span><span class="dot" style="background:#fff3e0;border:1px solid #e65100"></span> SAC</span>
+            <span><span class="dot" style="background:#e8f5e9;border:1px solid #2e7d32"></span> Qualidade</span>
+            <span><span class="dot" style="background:#fff3e0;border:1px solid #e65100"></span> Comercial</span>
+            <span><span class="dot" style="background:#e3f2fd;border:1px solid #1565c0"></span> Devolução</span>
+            <span><span class="dot" style="background:#e0f7fa;border:1px solid #00695c"></span> Crédito</span>
+        </div>
+
+        <div class="painel-grid" id="painel-matriz">
+            <div style="text-align:center;padding:40px;color:#999;grid-column:1/-1">Carregando...</div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    const u = getUsuario();
+    if (!['admin','sac'].includes(u?.perfil)) {
+        window.location.href = '/pages/reclamacoes.html';
+    }
+
+    // COLUNAS: ciclo de vida — cada coluna tem status específicos POR SETOR
+    // Cada coluna define quais status contam para cada setor via statusPorSetor
+    const COLUNAS = [
+        {
+            id: 'cadastrada',
+            label: 'Cadastrada',
+            cor: 'laranja',
+            filtro: 'rascunho',
+            // Todos os status desta fase (para total da coluna)
+            status: ['rascunho','reclamacao_cadastrada'],
+            // Quais status cada setor vê nesta coluna
+            statusPorSetor: {
+                'SAC': ['rascunho','reclamacao_cadastrada'],
+            }
+        },
+        {
+            id: 'analise',
+            label: 'Análise Qualidade',
+            cor: 'verde',
+            filtro: 'aguardando_analise_qualidade',
+            status: ['aguardando_analise_qualidade','aguardando_analise_qualidade_pos_visita'],
+            statusPorSetor: {
+                'Qualidade': ['aguardando_analise_qualidade','aguardando_analise_qualidade_pos_visita'],
+            }
+        },
+        {
+            id: 'visita',
+            label: 'Visita Técnica',
+            cor: 'roxo',
+            filtro: 'aguardando_visita_tecnica_qualidade',
+            status: ['aguardando_visita_tecnica_qualidade'],
+            statusPorSetor: {
+                'Qualidade': ['aguardando_visita_tecnica_qualidade'],
+            }
+        },
+        {
+            id: 'direcionamento',
+            label: 'Direcionamento',
+            cor: 'laranja',
+            filtro: 'aguardando_comercial_procedente',
+            status: ['aguardando_comercial_procedente','aguardando_comercial_improcedente','aguardando_direcionamento_comercial_pos_visita'],
+            statusPorSetor: {
+                'Comercial': ['aguardando_comercial_procedente','aguardando_comercial_improcedente','aguardando_direcionamento_comercial_pos_visita'],
+            }
+        },
+        {
+            id: 'devolucao',
+            label: 'Devolução',
+            cor: 'azul',
+            filtro: 'encaminhando_devolucao_sac',
+            status: [
+                'encaminhando_devolucao_sac',
+                'encaminhando_devolucao_conferindo_nf_fiscal',
+                'encaminhando_devolucao_corrigindo_nf',
+                'encaminhando_devolucao_sac_solicitar_coleta',
+                'encaminhando_devolucao_aguardando_correcao_nf_cliente',
+                'encaminhando_devolucao_aguardando_chegada_material',
+                'encaminhando_devolucao_aguardando_revisao',
+                'encaminhando_devolucao_aguardando_of',
+                'encaminhando_devolucao_aguardando_conferencia_material',
+            ],
+            // Cada setor só vê os status em que ele atua dentro da devolução
+            statusPorSetor: {
+                'SAC':      ['encaminhando_devolucao_sac','encaminhando_devolucao_conferindo_nf_fiscal','encaminhando_devolucao_corrigindo_nf','encaminhando_devolucao_sac_solicitar_coleta','encaminhando_devolucao_aguardando_correcao_nf_cliente'],
+                'Expedição':['encaminhando_devolucao_aguardando_chegada_material'],
+                'Revisão':  ['encaminhando_devolucao_aguardando_revisao'],
+                'PCP':      ['encaminhando_devolucao_aguardando_of'],
+                'Fiscal':   ['encaminhando_devolucao_aguardando_conferencia_material','encaminhando_devolucao_conferindo_nf_fiscal'],
+            }
+        },
+        {
+            id: 'credito',
+            label: 'Geração de Crédito',
+            cor: 'teal',
+            filtro: 'gerando_credito_financeiro',
+            status: ['gerando_credito_sac','gerando_credito_financeiro','aguardando_aprovacao_financeiro','aguardando_complemento_sac'],
+            statusPorSetor: {
+                'SAC':        ['gerando_credito_sac','aguardando_complemento_sac'],
+                'Fiscal':     ['gerando_credito_financeiro'],
+                'Financeiro': ['aguardando_aprovacao_financeiro'],
+            }
+        },
+        {
+            id: 'finalizacao',
+            label: 'Finalização',
+            cor: 'encerramento',
+            filtro: 'aguardando_encerramento_comercial',
+            status: ['aguardando_encerramento_comercial'],
+            statusPorSetor: {
+                'Comercial': ['aguardando_encerramento_comercial'],
+            }
+        },
+    ];
+
+    // LINHAS: setores que aparecem na matriz
+    const SETORES = [
+        { nome: 'SAC',        icone: '🎧', colunas: ['cadastrada','devolucao','credito'] },
+        { nome: 'Qualidade',  icone: '🔬', colunas: ['analise','visita'] },
+        { nome: 'Comercial',  icone: '💼', colunas: ['direcionamento','finalizacao'] },
+        { nome: 'Expedição',  icone: '📦', colunas: ['devolucao'] },
+        { nome: 'Revisão',    icone: '🧵', colunas: ['devolucao'] },
+        { nome: 'PCP',        icone: '⚙️', colunas: ['devolucao'] },
+        { nome: 'Fiscal',     icone: '📄', colunas: ['devolucao','credito'] },
+        { nome: 'Financeiro', icone: '💰', colunas: ['credito'] },
+    ];
+
+    let contagens = {}; // status -> count
+
+    async function carregar() {
+        const r = await api('GET', '/reclamacoes');
+        if (!r.ok) return;
+        const recs = r.dados || [];
+
+        // Conta por status (apenas não concluídas/canceladas)
+        contagens = {};
+        let total = 0;
+        recs.forEach(rec => {
+            if (rec.status === 'concluida' || rec.status === 'cancelada') return;
+            contagens[rec.status] = (contagens[rec.status] || 0) + 1;
+            total++;
+        });
+
+        // Resumo por setor
+        const porSetor = {};
+        SETORES.forEach(s => {
+            porSetor[s.nome] = s.colunas.reduce((acc, colId) => {
+                const col = COLUNAS.find(c => c.id === colId);
+                return acc + (col ? col.status.reduce((a, st) => a + (contagens[st]||0), 0) : 0);
+            }, 0);
+        });
+
+        document.getElementById('res-total').textContent     = total;
+        document.getElementById('res-sac').textContent       = porSetor['SAC'] || 0;
+        document.getElementById('res-qualidade').textContent = porSetor['Qualidade'] || 0;
+        document.getElementById('res-comercial').textContent = porSetor['Comercial'] || 0;
+        const outros = (porSetor['Expedição']||0)+(porSetor['Revisão']||0)+(porSetor['PCP']||0)+(porSetor['Fiscal']||0)+(porSetor['Financeiro']||0);
+        document.getElementById('res-outros').textContent    = outros;
+
+        renderMatriz();
+    }
+
+    function renderMatriz() {
+        // Cabeçalho das colunas
+        let thead = '<thead><tr>';
+        COLUNAS.forEach(col => {
+            thead += `<th>${col.label}</th>`;
+        });
+        thead += '<th style="background:#e8eaf6;color:#283593">Total</th></tr></thead>';
+
+        // Linhas por setor
+        let tbody = '<tbody>';
+        SETORES.forEach(s => {
+            // Total do setor = soma das colunas em que atua
+            const totalSetor = s.colunas.reduce((acc, colId) => {
+                const col = COLUNAS.find(c => c.id === colId);
+                return acc + (col ? col.status.reduce((a, st) => a + (contagens[st]||0), 0) : 0);
+            }, 0);
+
+            tbody += '<tr>';
+            COLUNAS.forEach(col => {
+                const atuaNessa = s.colunas.includes(col.id);
+                if (!atuaNessa) {
+                    tbody += '<td><span style="color:#efefef;font-size:16px">·</span></td>';
+                } else {
+                    // Usa statusPorSetor para contar só o que este setor faz nesta coluna
+                    const statusDoSetor = (col.statusPorSetor && col.statusPorSetor[s.nome]) || col.status;
+                    const n = statusDoSetor.reduce((acc, st) => acc + (contagens[st]||0), 0);
+                    if (n === 0) {
+                        tbody += '<td><span class="num-badge zero">—</span></td>';
+                    } else {
+                        tbody += `<td><a class="num-badge cor-${col.cor}" href="/pages/reclamacoes.html?status=${col.filtro}" title="Ver: ${col.label}">${n}</a></td>`;
+                    }
+                }
+            });
+            // Total do setor = soma dos status específicos do setor em cada coluna
+            const totalSetorReal = s.colunas.reduce((acc, colId) => {
+                const col = COLUNAS.find(c => c.id === colId);
+                if (!col) return acc;
+                const sts = (col.statusPorSetor && col.statusPorSetor[s.nome]) || col.status;
+                return acc + sts.reduce((a, st) => a + (contagens[st]||0), 0);
+            }, 0);
+            tbody += `<td><span class="total-col">${totalSetorReal || '—'}</span></td></tr>`;
+        });
+
+        // Linha de totais por coluna (soma todos os status da coluna)
+        tbody += '<tr style="background:#f8f9fa">';
+        COLUNAS.forEach(col => {
+            const n = col.status.reduce((acc, st) => acc + (contagens[st]||0), 0);
+            tbody += `<td class="total-row-cell">${n > 0 ? n : '—'}</td>`;
+        });
+        const grandTotal = Object.values(contagens).reduce((a,b)=>a+b,0);
+        tbody += `<td class="total-col" style="background:#e8eaf6">${grandTotal}</td></tr>`;
+        tbody += '</tbody>';
+
+        // Coluna de perfis (esquerda) — total usando statusPorSetor
+        let perfilCol = '<div class="painel-perfil-col">' +
+            '<div class="painel-perfil-header">Setor</div>';
+        SETORES.forEach(s => {
+            const totalSetor = s.colunas.reduce((acc, colId) => {
+                const col = COLUNAS.find(c => c.id === colId);
+                if (!col) return acc;
+                const sts = (col.statusPorSetor && col.statusPorSetor[s.nome]) || col.status;
+                return acc + sts.reduce((a, st) => a + (contagens[st]||0), 0);
+            }, 0);
+            perfilCol += `<div class="painel-perfil-cell">${s.icone} ${s.nome} <span style="margin-left:auto;font-size:11px;color:#aaa;font-weight:400">${totalSetor}</span></div>`;
+        });
+        perfilCol += '</div>';
+
+        const tabelaPart = '<div class="painel-fases-wrapper"><table class="painel-fases-table">' + thead + tbody + '</table></div>';
+        document.getElementById('painel-matriz').innerHTML = perfilCol + tabelaPart;
+    }
+
+    carregar();
+</script>
+</body>
+</html>

@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalhe da Reclamação — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .secao { margin-bottom: 24px; }
+        .secao-titulo { font-size: 13px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .info-item label { display: block; font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+        .info-item span  { font-size: 14px; color: #333; }
+        .historico-linha { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+        .historico-linha:last-child { border: none; }
+        .historico-data { color: #999; white-space: nowrap; min-width: 140px; }
+        .etapa-ativa { border: 2px solid #2c2c2c !important; }
+        .etapa-concluida { border-left: 4px solid #2e7d32 !important; }
+        .etapa-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .arquivos-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .arquivo-thumb { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 2px solid #eee; transition: border 0.2s; }
+        .arquivo-thumb:hover { border-color: #2c2c2c; }
+        .arquivo-doc { width: 80px; height: 80px; border-radius: 8px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #666; text-align: center; cursor: pointer; border: 2px solid #eee; text-decoration: none; padding: 8px; }
+        .upload-area { border: 2px dashed #ddd; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: #666; margin-top: 12px; transition: border 0.2s; }
+        .upload-area:hover { border-color: #2c2c2c; }
+        .rodape-fixo { position: fixed; bottom: 0; left: 240px; right: 0; background: white; border-top: 1px solid #eee; padding: 12px 32px; display: flex; gap: 8px; align-items: center; z-index: 50; }
+        .rodape-fixo .btn { height: 36px; padding: 0 16px; border-radius: 6px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; border: none; width: auto; }
+        .rodape-fixo .btn-voltar-pg { background: #fff; color: #4a5568; border: 1px solid #cbd5e0 !important; flex-shrink: 0; }
+        .rodape-fixo .btn-secondary { background: #4a5568; color: white; flex-shrink: 0; }
+        .rodape-fixo .btn-primary, .rodape-fixo .btn-success { background: #2f855a; color: white; flex: 1; }
+        .info-resultado { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+        .info-resultado.procedente   { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .info-resultado.improcedente { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .info-resultado.visita       { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+        .info-resultado.neutro       { background: #f5f5f5; color: #555; border: 1px solid #ddd; }
+        .etapa-box-titulo { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; margin: 12px 0 6px; }
+        .checkboxes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 8px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border: 1px solid #eee; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+        .checkbox-item:hover { background: #f5f5f5; }
+        .checkbox-item input { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+        .radio-group { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+        .radio-item { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 10px 16px; border: 2px solid #eee; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+        .radio-item:hover { border-color: #2c2c2c; }
+        .radio-item input { width: 16px; height: 16px; cursor: pointer; }
+        .radio-item.selecionado { border-color: #2c2c2c; background: #f5f5f5; font-weight: 600; }
+        .plano-acao-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+        .plano-acao-table th { background:#f5f5f5; padding:8px 10px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; font-size:12px; }
+        .plano-acao-table td { padding:6px 8px; border:1px solid #e0e0e0; vertical-align:top; }
+        .plano-acao-table input, .plano-acao-table select { width:100%; border:none; background:transparent; font-size:13px; font-family:inherit; outline:none; padding:2px 4px; }
+        .plano-acao-table input:focus, .plano-acao-table select:focus { background:#f9f9f9; border-radius:3px; }
+        .btn-add-linha { font-size:12px; color:#2f855a; background:none; border:1px dashed #2f855a; border-radius:6px; padding:4px 12px; cursor:pointer; margin-top:8px; }
+        .btn-del-linha { background:none; border:none; color:#c62828; cursor:pointer; font-size:14px; padding:2px 6px; }
+        .cotacoes-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+        .cotacoes-table th { background:#f5f5f5; padding:8px 10px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; font-size:12px; }
+        .cotacoes-table td { padding:6px 8px; border:1px solid #e0e0e0; vertical-align:top; }
+        .cotacoes-table input { width:100%; border:none; background:transparent; font-size:13px; font-family:inherit; outline:none; padding:2px 4px; }
+        .cotacoes-table input:focus { background:#f9f9f9; border-radius:3px; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo" style="padding-bottom:90px;">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <div>
+                <a href="/pages/reclamacoes.html" style="color:#666;font-size:13px;text-decoration:none;">← Voltar para Reclamações</a>
+                <h2 class="pagina-titulo" style="margin:4px 0 0;" id="titulo-pagina">Carregando...</h2>
+            </div>
+            <span id="badge-status" class="badge"></span>
+        </div>
+
+        <div class="card secao">
+            <div class="secao-titulo">📋 Dados da Reclamação</div>
+            <div class="grid-3" style="margin-bottom:16px;">
+                <div class="info-item"><label>Cliente</label><span id="info-cliente">—</span></div>
+                <div class="info-item"><label>Nossa NF</label><span id="info-nf">—</span></div>
+                <div class="info-item"><label>Lote</label><span id="info-lote">—</span></div>
+                <div class="info-item"><label>Metragem</label><span id="info-metragem">—</span></div>
+                <div class="info-item"><label>Aberta em</label><span id="info-data">—</span></div>
+                <div class="info-item"><label>Aberta por</label><span id="info-criado-por">—</span></div>
+            </div>
+            <div class="info-item">
+                <label>Descrição do Problema</label>
+                <span id="info-descricao" style="display:block;line-height:1.6;white-space:pre-wrap;margin-top:4px;">—</span>
+            </div>
+        </div>
+
+        <div id="linha-do-tempo"></div>
+        <div id="secao-etapa-atual"></div>
+
+        <div class="card secao">
+            <div class="secao-titulo">📅 Histórico de Movimentações</div>
+            <div id="historico-lista"><p style="color:#999;font-size:13px;">Nenhuma movimentação registrada.</p></div>
+        </div>
+    </div>
+</div>
+
+ <div class="rodape-fixo" id="rodape-acoes" style="display:none;"></div>
+
+
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+    const params = new URLSearchParams(window.location.search);
+    const recId  = params.get('id');
+    if (!recId) window.location.href = '/pages/reclamacoes.html';
+    let reclamacao = null;
+    let todasAreas = [];
+    let todosDefeitos = [];
+
+    const statusLabel = {
+        rascunho:                                           'Rascunho',
+        reclamacao_cadastrada:                              'Cadastrada',
+        aguardando_analise_qualidade:                       'Ag. Qualidade',
+        aguardando_comercial_procedente:                    'Ag. Comercial',
+        aguardando_comercial_improcedente:                  'Ag. Comercial',
+        aguardando_visita_tecnica_qualidade:                'Ag. Visita Técnica',
+        aguardando_direcionamento_comercial_pos_visita:     'Ag. Direcionamento',
+        aguardando_analise_qualidade_pos_visita:            'Ag. 2ª Análise — Qualidade',
+        encaminhando_devolucao_sac:                         'Encam. Devolução — SAC',
+        encaminhando_devolucao_conferindo_nf:               'Conferindo NF',
+        encaminhando_devolucao_corrigindo_nf:               'Corrigindo NF',
+        encaminhando_devolucao_sac_solicitar_coleta:        'Ag. Coleta',
+        encaminhando_devolucao_aguardando_chegada_material: 'Ag. Chegada Material',
+        encaminhando_devolucao_aguardando_revisao:          'Ag. Revisão',
+        encaminhando_devolucao_aguardando_of:               'Ag. OF',
+        encaminhando_devolucao_aguardando_conferencia_material: 'Ag. Conferência',
+        encaminhando_devolucao_aguardando_correcao_nf_cliente:  'Ag. Correção NF',
+        gerando_credito_financeiro:                         'Gerando Crédito',
+        gerando_credito_sac:                                'Definindo Crédito',
+        aguardando_encerramento_comercial:                  'Ag. Encerramento',
+        concluida:                                          'Concluída',
+        cancelada:                                          'Cancelada',
+    };
+
+    function fmt(dt)  { return dt ? new Date(dt).toLocaleString('pt-BR') : '—'; }
+    function fmtD(dt) { if (!dt) return '—'; const d = dt.includes('T') ? new Date(dt) : new Date(dt+'T00:00:00'); return d.toLocaleDateString('pt-BR'); }
+    function badgeCor(s) {
+        if (s==='concluida')   return 'badge-verde';
+        if (s==='cancelada')   return 'badge-vermelho';
+        if (s==='rascunho')    return 'badge-cinza';
+        if (s==='reclamacao_cadastrada') return 'badge-azul';
+        if (['encaminhando_devolucao_sac','encaminhando_devolucao_conferindo_nf',
+             'encaminhando_devolucao_sac_solicitar_coleta',
+             'encaminhando_devolucao_aguardando_chegada_material',
+             'encaminhando_devolucao_aguardando_revisao',
+             'encaminhando_devolucao_aguardando_of',
+             'encaminhando_devolucao_aguardando_conferencia_material',
+             'gerando_credito_financeiro','gerando_credito_sac'].includes(s)) return 'badge-azul';
+        return 'badge-laranja';
+    }
+
+    function renderArqs(arquivos, etapa) {
+        const f = (arquivos||[]).filter(a => a.etapa === etapa);
+        if (!f.length) return '';
+        return '<div class="arquivos-grid">' + f.map(a =>
+            a.mime_type && a.mime_type.startsWith('image/')
+                ? `<img src="${a.caminho}" class="arquivo-thumb" onclick="window.open('${a.caminho}')" title="${a.nome_original}" />`
+                : `<a href="${a.caminho}" target="_blank" class="arquivo-doc">📄 ${a.nome_original}</a>`
+        ).join('') + '</div>';
+    }
+
+    function renderCheckboxesAreas(selecionadas, prefixo) {
+        if (!todasAreas.length) return '<p style="color:#999;font-size:13px;">Nenhuma área cadastrada.</p>';
+        const ids = (selecionadas||[]).map(a => a.id);
+        return `<div class="checkboxes-grid">${todasAreas.map(a =>
+            `<label class="checkbox-item">
+                <input type="checkbox" name="${prefixo}-area" value="${a.id}" ${ids.includes(a.id)?'checked':''} />
+                ${a.nome}
+            </label>`
+        ).join('')}</div>`;
+    }
+
+    function renderCheckboxesDefeitos(selecionados, prefixo) {
+        if (!todosDefeitos.length) return '<p style="color:#999;font-size:13px;">Nenhum defeito cadastrado.</p>';
+        const ids = (selecionados||[]).map(d => d.id);
+        return `<div class="checkboxes-grid">${todosDefeitos.map(d =>
+            `<label class="checkbox-item">
+                <input type="checkbox" name="${prefixo}-defeito" value="${d.id}" ${ids.includes(d.id)?'checked':''} />
+                <span class="badge badge-cinza" style="font-size:10px;">${d.codigo}</span> ${d.descricao}
+            </label>`
+        ).join('')}</div>`;
+    }
+
+    function getChecked(name) {
+        return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+    }
+
+    async function carregar() {
+        const [rRec, rAreas, rDefeitos] = await Promise.all([
+            api('GET', '/reclamacoes/' + recId),
+            api('GET', '/areas'),
+            api('GET', '/defeitos'),
+        ]);
+        if (!rRec.ok) { alert('Erro ao carregar reclamação.'); return; }
+        reclamacao    = rRec.dados;
+        todasAreas    = (rAreas.dados||[]).filter(a => a.ativo);
+        todosDefeitos = (rDefeitos.dados||[]).filter(d => d.ativo);
+        renderizar();
+    }
+
+   function renderizar() {
+    const rec = reclamacao;
+    const usuario = getUsuario();
+    const perfil = usuario.perfil;
+    const status = rec.status;
+
+    // 1. Define se o usuário atual pode editar os dados básicos (NF, Lote, etc)
+    const podeEditarCampos = status === 'rascunho' && ['admin', 'sac'].includes(perfil);
+
+    // 2. Cabeçalho e Status
+    document.getElementById('titulo-pagina').textContent = 'REC-' + String(rec.codigo).padStart(6, '0');
+    const bEl = document.getElementById('badge-status');
+    bEl.textContent = statusLabel[status] || status;
+    bEl.className = 'badge ' + badgeCor(status);
+
+    // 3. Dados Fixos (Cliente e Datas)
+    document.getElementById('info-cliente').textContent = rec.cliente_nome;
+    document.getElementById('info-data').textContent = fmt(rec.criado_em);
+    document.getElementById('info-criado-por').textContent = rec.criado_por_nome;
+
+    // 4. Lógica de Campos Editáveis vs Fixos (Sem bordas coloridas no CSS)
+    if (podeEditarCampos) {
+        document.getElementById('info-nf').innerHTML = `<input type="text" id="edit-nf" class="form-control-edit" value="${rec.nossa_nf || ''}">`;
+        document.getElementById('info-lote').innerHTML = `<input type="text" id="edit-lote" class="form-control-edit" value="${rec.lote || ''}">`;
+        document.getElementById('info-metragem').innerHTML = `<input type="number" id="edit-metragem" class="form-control-edit" value="${rec.metragem || ''}">`;
+        document.getElementById('info-descricao').innerHTML = `<textarea id="edit-descricao" class="form-control-edit" rows="4">${rec.descricao || ''}</textarea>`;
+    } else {
+        document.getElementById('info-nf').textContent = rec.nossa_nf || '—';
+        document.getElementById('info-lote').textContent = rec.lote || '—';
+        document.getElementById('info-metragem').textContent = rec.metragem ? rec.metragem + ' m' : '—';
+        document.getElementById('info-descricao').textContent = rec.descricao;
+    }
+
+    // 5. Histórico de Movimentações
+    if (rec.historico && rec.historico.length) {
+        document.getElementById('historico-lista').innerHTML = rec.historico
+            .filter(h => h.usuario_nome || h.observacao || h.descricao)
+            .map(h => `
+                <div class="historico-linha">
+                    <span class="historico-data">${fmt(h.criado_em)}</span>
+                    <span><strong>${h.usuario_nome || 'Sistema'}</strong> — ${h.observacao || h.descricao || ''}</span>
+                </div>
+            `).join('');
+    }
+
+    // 6. Chamada das funções de etapa e linha do tempo
+    renderLinhaTempo(rec);
+    renderEtapa(rec, perfil, status);
+
+    // 7. Controle dos botões no rodapé fixo
+    const containerRodape = document.getElementById('rodape-acoes'); // ID correto da linha 83
+    const btnSalvar = document.getElementById('btn-salvar-rascunho');
+    const btnEnviar = document.getElementById('btn-enviar-qualidade');
+
+    // IMPORTANTE: Primeiro, mostramos o container do rodapé
+    if (containerRodape) {
+        containerRodape.style.display = 'flex'; 
+    }
+
+    // Agora, mostramos os botões baseados na permissão
+    if (podeEditarCampos) {
+        if (btnSalvar) btnSalvar.style.display = 'flex';
+        if (btnEnviar) btnEnviar.style.display = 'flex';
+    } else {
+        if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnEnviar) btnEnviar.style.display = 'none';
+    }
+    
+
+    // 8. Ajuste visual de campos radio
+    setTimeout(() => {
+        document.querySelectorAll('.radio-item input').forEach(r => {
+            const item = r.closest('.radio-item');
+            if (item) item.classList.toggle('selecionado', r.checked);
+        });
+    }, 50);
+
+    if (podeEditarCampos) {
+    if (btnSalvar) btnSalvar.style.display = 'flex'; // Use 'flex' para alinhar ícones
+    if (btnEnviar) btnEnviar.style.display = 'flex';
+}
+}
+
+// FUNÇÃO PARA ENVIAR OS DADOS EDITADOS AO BACKEND
+async function salvarAlteracoesRascunho() {
+    const id = new URLSearchParams(window.location.search).get('id');
+    const dados = {
+        cliente_id: reclamacao.cliente_id,
+        nossa_nf:   document.getElementById('edit-nf').value,
+        lote:       document.getElementById('edit-lote').value,
+        metragem:   document.getElementById('edit-metragem').value,
+        descricao:  document.getElementById('edit-descricao').value,
+        concluir:   false // Para o backend saber que continua sendo rascunho
+    };
+
+    const res = await api('PUT', `/reclamacoes/${id}`, dados);
+    if (res.ok) {
+        alert('Rascunho atualizado com sucesso!');
+        location.reload();
+    } else {
+        alert('Erro ao salvar rascunho: ' + (res.erro || 'Erro desconhecido'));
+    }
+}
+
+    function blocoAvaliacao(av, areasRec, defeitosRec, arquivos, etapaArq, titulo, corBorda) {
+        if (!av || !av.concluido_em) return '';
+        const cor = av.resultado==='procedente'?'procedente':av.resultado==='improcedente'?'improcedente':'visita';
+        const lbl = av.resultado==='procedente'?'✅ Procedente':av.resultado==='improcedente'?'❌ Improcedente':'🔍 Requer Visita Técnica';
+        const nomeAreas    = (areasRec||[]).map(a=>a.nome).join(', ') || '—';
+        const nomeDefeitos = (defeitosRec||[]).map(d=>`${d.codigo} — ${d.descricao}`).join(', ') || '—';
+        return `
+            <div class="card secao" style="border-left:4px solid ${corBorda||'#2e7d32'}">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">${titulo}</div>
+                    <span class="badge badge-verde">Concluída</span>
+                </div>
+                <div class="info-resultado ${cor}"><strong>Resultado:</strong> ${lbl}</div>
+                ${av.descricao?`<div class="info-item" style="margin-bottom:12px"><label>Observações</label><span>${av.descricao}</span></div>`:''}
+                ${(av.resultado==='procedente'||av.resultado==='improcedente') ? `
+                    ${av.causa_raiz?`<div class="info-item" style="margin-bottom:12px"><label>Causa Raiz</label><span>${av.causa_raiz}</span></div>`:''}
+                    ${av.plano_acao?`<div class="info-item" style="margin-bottom:12px"><label>Plano de Ação</label><span>${av.plano_acao}</span></div>`:''}
+                    <div class="grid-2">
+                        <div class="info-item"><label>Áreas</label><span>${nomeAreas}</span></div>
+                        <div class="info-item"><label>Defeitos</label><span>${nomeDefeitos}</span></div>
+                    </div>
+                `:''}
+                ${renderArqs(arquivos, etapaArq)}
+                <div style="font-size:11px;color:#999;margin-top:8px">Realizada em ${fmt(av.concluido_em)} por ${av.usuario_nome||'—'}</div>
+            </div>`;
+    }
+
+    function renderLinhaTempo(rec) {
+        let html = '';
+
+        // 1. Arquivos do cadastro
+        const arqCad = (rec.arquivos||[]).filter(a => a.etapa==='cadastro');
+        if (arqCad.length) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">📸 Arquivos do Cadastro</div><span class="badge badge-cinza">SAC</span></div>
+                ${renderArqs(rec.arquivos,'cadastro')}
+            </div>`;
+        }
+
+        // 2. 1ª Avaliação da Qualidade
+        html += blocoAvaliacao(rec.avaliacao, rec.areas, rec.defeitos, rec.arquivos, 'avaliacao', '🔬 Etapa 1 — Avaliação da Qualidade', '#2e7d32');
+
+        // 3. Direcionamento Comercial (1ª decisão)
+        if (rec.direcionamento && rec.direcionamento.concluido_em) {
+            const d = rec.direcionamento;
+            const dec = d.visita_tecnica ? '🔍 Solicitou Visita Técnica'
+                      : d.havera_devolucao ? '📦 Devolução'
+                      : d.havera_credito   ? '💰 Crédito'
+                      : '✅ Encerramento direto';
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">💼 Direcionamento Comercial</div><span class="badge badge-verde">Concluído</span></div>
+                <div class="info-resultado neutro"><strong>Decisão:</strong> ${dec}</div>
+                ${d.observacoes||d.descricao_encerramento ? `<div class="info-item"><label>Observações</label><span>${d.observacoes||d.descricao_encerramento}</span></div>` : ''}
+                <div style="font-size:11px;color:#999;margin-top:8px">Concluído em ${fmt(d.concluido_em)}</div>
+            </div>`;
+        }
+
+        // 4. Visita Técnica (se houve)
+        if (rec.visita && rec.visita.concluido_em) {
+            const v = rec.visita;
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">🔍 Visita Técnica</div><span class="badge badge-verde">Concluída</span></div>
+                <div class="grid-2" style="margin-bottom:12px">
+                    <div class="info-item"><label>Data</label><span>${fmtD(v.data_visita)}</span></div>
+                    <div class="info-item"><label>Hora</label><span>${v.hora_visita||'—'}</span></div>
+                    <div class="info-item"><label>Responsável Cliente</label><span>${v.responsavel_cliente||'—'}</span></div>
+                </div>
+                ${v.descricao ? `<div class="info-item"><label>Observações</label><span>${v.descricao}</span></div>` : ''}
+                ${renderArqs(rec.arquivos,'visita')}
+                <div style="font-size:11px;color:#999;margin-top:8px">Concluída em ${fmt(v.concluido_em)}</div>
+            </div>`;
+        }
+
+        // 5. 2ª Avaliação Pós-Visita (sempre que houve visita)
+        if (rec.visita && rec.visita.concluido_em) {
+            html += blocoAvaliacao(rec.av_pos_visita, [], [], rec.arquivos, 'avaliacao_pos_visita', '🔬 2ª Avaliação — Pós-Visita', '#1565c0');
+        }
+
+        // 6. Direcionamento Comercial 2ª decisão (só se houve visita técnica)
+        const houveVisitaTecnica = rec.visita && rec.visita.concluido_em;
+        if (rec.direcionamento && rec.direcionamento.concluido_em && houveVisitaTecnica) {
+            const d = rec.direcionamento;
+            const dec = d.havera_devolucao ? '📦 Devolução' : d.havera_credito ? '💰 Crédito' : '✅ Encerramento direto';
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">💼 Direcionamento Comercial (2ª Decisão)</div><span class="badge badge-verde">Concluído</span></div>
+                <div class="info-resultado neutro"><strong>Decisão:</strong> ${dec}</div>
+                ${d.observacoes||d.descricao_encerramento ? `<div class="info-item"><label>Observações</label><span>${d.observacoes||d.descricao_encerramento}</span></div>` : ''}
+                <div style="font-size:11px;color:#999;margin-top:8px">Concluído em ${fmt(d.concluido_em)}</div>
+            </div>`;
+        }
+
+        // 7. Devolução (etapas)
+        if (rec.devolucao) {
+            const dv = rec.devolucao;
+            const col = rec.coleta || {};
+            const conf = rec.conferencia_nf || null;
+            const badge = dv.concluido_em ? 'badge-verde" >Concluída' : 'badge-azul">Em andamento';
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">📦 Devolução do Material</div><span class="badge ${badge}</span></div>
+                <div class="grid-2">
+                    <div class="info-item"><label>Quantidade</label><span>${dv.quantidade_confirmada||'—'} m</span></div>
+                    <div class="info-item"><label>Transportadora Escolhida</label><span>${dv.transportadora_escolhida||'—'}</span></div>
+                </div>`;
+
+            // Cotações
+            if (rec.cotacoes && rec.cotacoes.length) {
+                html += `<div class="info-item"><label>Cotações</label><span>${rec.cotacoes.map(c=>`${c.transportadora}: R$ ${parseFloat(c.valor||0).toFixed(2).replace('.',',')}`).join(' | ')}</span></div>`;
+            }
+
+            // NF do cliente
+            if (dv.nf_cliente_url) {
+                html += `<div class="info-item"><label>NF do Cliente</label><span><a href="${dv.nf_cliente_url}" target="_blank">📄 Ver NF</a></span></div>`;
+            }
+
+            // Conferência NF
+            if (conf) {
+                html += `<div class="info-item"><label>Conferência NF (Fiscal)</label><span>${conf.nf_ok ? '✅ Aprovada' : '❌ Reprovada' + (conf.descricao ? ': ' + conf.descricao : '')}</span></div>`;
+            }
+
+            // Coleta
+            if (col && col.transportadora) {
+                html += `<div class="info-item" style="margin-top:8px"><label>Coleta Solicitada</label></div>
+                <div class="grid-2">
+                    <div class="info-item"><label>Transportadora</label><span>${col.transportadora||'—'}</span></div>
+                    <div class="info-item"><label>NF de Coleta</label><span>${col.nf_coleta||'—'}</span></div>
+                    <div class="info-item"><label>Data da Coleta</label><span>${fmtD(col.data_coleta)}</span></div>
+                    <div class="info-item"><label>Previsão de Chegada</label><span>${fmtD(col.data_prevista_chegada)}</span></div>
+                </div>`;
+                if (col.observacoes) html += `<div class="info-item"><label>Obs. Coleta</label><span>${col.observacoes}</span></div>`;
+            }
+
+            html += `</div>`;
+        }
+
+        // 8. Crédito
+        if (rec.credito && rec.credito.concluido_em) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">💰 Crédito Gerado</div><span class="badge badge-verde">Concluído</span></div>
+                <div class="info-item"><label>Valor</label><span>R$ ${parseFloat(rec.credito.valor_credito||0).toFixed(2).replace('.',',')}</span></div>
+            </div>`;
+        }
+
+        // 9. Encerramento
+        if (rec.encerramento && rec.encerramento.concluido_em) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header"><div class="secao-titulo" style="margin:0">✅ Reclamação Encerrada</div><span class="badge badge-verde">Concluída</span></div>
+                ${rec.encerramento.descricao ? `<div class="info-item"><label>Observações</label><span>${rec.encerramento.descricao}</span></div>` : ''}
+                <div style="font-size:11px;color:#999;margin-top:8px">Encerrada em ${fmt(rec.encerramento.concluido_em)}</div>
+            </div>`;
+        }
+
+        document.getElementById('linha-do-tempo').innerHTML = html || '<p style="color:#999">Nenhuma etapa registrada ainda.</p>';
+    }
+
+
+    function formAvaliacao(av, areasRec, defeitosRec, prefixo, titulo, infoBox) {
+        const mostrarCamposProc = !av || !av.resultado || av.resultado === 'procedente';
+        return `
+            <div class="card secao etapa-ativa">
+                <div class="secao-titulo">${titulo}</div>
+                ${infoBox ? `<div class="info-resultado ${infoBox.cor}">${infoBox.texto}</div>` : ''}
+                <div class="campo">
+                    <label>Resultado *</label>
+                    <select id="${prefixo}-resultado" onchange="toggleCamposAvaliacao('${prefixo}')">
+                        <option value="">Selecione...</option>
+                        <option value="procedente"     ${av&&av.resultado==='procedente'?'selected':''}>Procedente</option>
+                        <option value="improcedente"   ${av&&av.resultado==='improcedente'?'selected':''}>Improcedente</option>
+                        ${prefixo==='av'?`<option value="visita_tecnica" ${av&&av.resultado==='visita_tecnica'?'selected':''}>Requer Visita Técnica</option>`:''}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label>Observações da Análise</label>
+                    <textarea id="${prefixo}-descricao" rows="3" placeholder="Descreva a análise...">${av&&av.descricao||''}</textarea>
+                </div>
+                <div id="${prefixo}-campos-proc" style="display:${mostrarCamposProc?'block':'none'}">
+                    <div class="campo">
+                        <label>Causa Raiz</label>
+                        <textarea id="${prefixo}-causa-raiz" rows="3" placeholder="Descreva a causa raiz do problema...">${av&&av.causa_raiz||''}</textarea>
+                    </div>
+                    <div class="campo">
+                        <label>Plano de Ação</label>
+                        <table class="plano-acao-table" id="${prefixo}-plano-table">
+                            <thead><tr>
+                                <th style="width:35%">Ação</th>
+                                <th style="width:20%">Responsável</th>
+                                <th style="width:15%">Prazo</th>
+                                <th style="width:15%">Eficácia</th>
+                                <th style="width:10%">Status</th>
+                                <th style="width:5%"></th>
+                            </tr></thead>
+                            <tbody id="${prefixo}-plano-linhas">
+                                ${buildPlanoLinhas(av&&av.plano_acao, prefixo)}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn-add-linha" onclick="addLinhaPlano('${prefixo}')">+ Adicionar linha</button>
+                        <input type="hidden" id="${prefixo}-plano-acao" />
+                    </div>
+                    <div class="campo">
+                        <label>Áreas Envolvidas</label>
+                        ${renderCheckboxesAreas(areasRec, prefixo)}
+                    </div>
+                    <div class="campo">
+                        <label>Defeitos Identificados</label>
+                        ${renderCheckboxesDefeitos(defeitosRec, prefixo)}
+                    </div>
+                </div>
+                <div id="${prefixo}-arqs-existentes">
+                    ${(reclamacao.arquivos||[]).filter(a=>a.etapa===prefixo==='av'?'avaliacao':'avaliacao_pos_visita').length ?
+                        `<div class="etapa-box-titulo">Fotos já adicionadas</div>${renderArqs(reclamacao.arquivos, prefixo==='av'?'avaliacao':'avaliacao_pos_visita')}` : ''}
+                </div>
+                <div class="upload-area" onclick="document.getElementById('${prefixo}-arqs').click()">
+                    <input type="file" id="${prefixo}-arqs" multiple accept="image/*,.pdf" style="display:none"
+                           onchange="uploadArquivos(this.files,'${prefixo==='av'?'avaliacao':'avaliacao_pos_visita'}')" />
+                    📎 Adicionar fotos da análise
+                </div>
+            </div>`;
+    }
+
+    function renderEtapa(rec, perfil, status) {
+        const secao  = document.getElementById('secao-etapa-atual');
+        const rodape = document.getElementById('rodape-acoes');
+        secao.innerHTML = rodape.innerHTML = '';
+        rodape.style.display = 'none';
+        const btn = `<a href="/pages/reclamacoes.html" class="btn btn-voltar-pg">&#8592; Voltar</a>`;
+
+        // ===== RASCUNHO =====
+        if (status === 'rascunho' && ['admin','sac'].includes(perfil)) {
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">✏️ Rascunho</div>
+                <p style="color:#666;font-size:13px;margin-bottom:12px">Revise os dados e envie para análise quando estiver pronto.</p>
+                <div class="upload-area" onclick="document.getElementById('arq-rascunho').click()">
+                    <input type="file" id="arq-rascunho" multiple accept="image/*,video/*,.pdf" style="display:none" onchange="uploadArquivos(this.files,'cadastro')" />
+                    📎 Adicionar mais arquivos
+                </div></div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-primary" onclick="enviarParaQualidade()">✅ Enviar para Qualidade</button>`;
+        }
+
+        // ===== 1ª AVALIAÇÃO =====
+        else if (status === 'aguardando_analise_qualidade' && ['admin','qualidade'].includes(perfil)) {
+            secao.innerHTML = formAvaliacao(rec.avaliacao, rec.areas, rec.defeitos, 'av', '🔬 Etapa 1 — Avaliação da Qualidade', null);
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunho('avaliacao')">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirAvaliacao('av','/avaliacao')">✅ Concluir Avaliação</button>`;
+        }
+
+        // ===== VISITA TÉCNICA =====
+        else if (status === 'aguardando_visita_tecnica_qualidade' && ['admin','qualidade'].includes(perfil)) {
+            const v = rec.visita || {};
+            const arqVt = (rec.arquivos||[]).filter(a => a.etapa==='visita');
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">🔍 Visita Técnica</div>
+                <div class="info-resultado visita"><strong>Qualidade:</strong> 🔍 Requer Visita Técnica</div>
+                <div class="grid-2">
+                    <div class="campo"><label>Data *</label><input type="date" id="vt-data" value="${v.data_visita||''}" /></div>
+                    <div class="campo"><label>Hora</label><input type="time" id="vt-hora" value="${v.hora_visita||''}" /></div>
+                </div>
+                <div class="campo"><label>Responsável do Cliente</label><input type="text" id="vt-resp" value="${v.responsavel_cliente||''}" /></div>
+                <div class="campo"><label>Observações</label><textarea id="vt-desc" rows="3">${v.descricao||''}</textarea></div>
+                ${arqVt.length?`<div class="etapa-box-titulo">Fotos já adicionadas</div>${renderArqs(rec.arquivos,'visita')}`:''}
+                <div class="upload-area" onclick="document.getElementById('vt-arqs').click()">
+                    <input type="file" id="vt-arqs" multiple accept="image/*,.pdf" style="display:none" onchange="uploadArquivos(this.files,'visita')" />
+                    📎 Adicionar fotos da visita
+                </div></div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunho('visita')">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirVisita()">✅ Concluir Visita</button>`;
+        }
+
+        // ===== 2ª AVALIAÇÃO PÓS-VISITA =====
+        else if (status === 'aguardando_analise_qualidade_pos_visita' && ['admin','qualidade'].includes(perfil)) {
+            secao.innerHTML = formAvaliacao(rec.av_pos_visita, [], [], 'pv',
+                '🔬 Etapa 2 — Avaliação Pós-Visita Técnica',
+                { cor: 'visita', texto: '<strong>Visita técnica concluída.</strong> Reavalie a reclamação com base nos dados coletados.' }
+            );
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunho('avaliacao-pos-visita')">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirAvaliacao('pv','/avaliacao-pos-visita')">✅ Concluir 2ª Avaliação</button>`;
+        }
+
+        // ===== COMERCIAL =====
+        else if (status === 'aguardando_comercial_procedente' && ['admin','comercial'].includes(perfil)) {
+            const d   = rec.direcionamento || {};
+            const av  = rec.av_pos_visita || rec.avaliacao || {};
+            const cor = av.resultado==='procedente'?'procedente':'improcedente';
+            const lbl = av.resultado==='procedente'?'✅ Procedente — avaliado pela Qualidade':'❌ Improcedente — decisão estratégica do Comercial';
+            const decAtual = d.havera_devolucao ? 'devolucao' : d.havera_credito ? 'credito' : d.visita_tecnica ? 'visita_tecnica' : d.salvo_em ? 'nenhum' : '';
+            const visitaJaFeita = !!(rec.visita && rec.visita.concluido_em);
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">💼 Direcionamento Comercial</div>
+                <div class="info-resultado ${cor}"><strong>Resultado da Qualidade:</strong> ${lbl}</div>
+                <div class="campo">
+                    <label>Qual será a solução? *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item ${decAtual==='devolucao'?'selecionado':''}">
+                            <input type="radio" name="dir-decisao" value="devolucao" ${decAtual==='devolucao'?'checked':''} /> 📦 Devolução do Material
+                        </label>
+                        <label class="radio-item ${decAtual==='credito'?'selecionado':''}">
+                            <input type="radio" name="dir-decisao" value="credito" ${decAtual==='credito'?'checked':''} /> 💰 Geração de Crédito
+                        </label>
+                        <label class="radio-item ${decAtual==='nenhum'?'selecionado':''}">
+                            <input type="radio" name="dir-decisao" value="nenhum" ${decAtual==='nenhum'?'checked':''} /> ✅ Encerramento Direto
+                        </label>
+                        ${!visitaJaFeita ? `
+                        <label class="radio-item ${decAtual==='visita_tecnica'?'selecionado':''}">
+                            <input type="radio" name="dir-decisao" value="visita_tecnica" ${decAtual==='visita_tecnica'?'checked':''} /> 🔍 Solicitar Visita Técnica
+                        </label>` : ''}
+                    </div>
+                </div>
+                <div class="campo"><label>Observações</label>
+                    <textarea id="dir-obs" rows="3" placeholder="Justifique a decisão...">${d.descricao_encerramento||d.observacoes||''}</textarea>
+                </div></div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunho('direcionamento')">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirDirecionamento()">✅ Confirmar</button>`;
+        }
+
+        // ===== DEVOLUCAO =====
+        else if (status === 'encaminhando_devolucao_sac' && ['admin','sac'].includes(perfil)) {
+            const dv = rec.devolucao || {};
+            const ce = rec.cotacoes || [];
+            const ot = ce.map(c=>`<option value="${c.transportadora}" ${dv.transportadora_escolhida===c.transportadora?'selected':''}>${c.transportadora} - R$ ${parseFloat(c.valor||0).toFixed(2).replace('.',',')}</option>`).join('');
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 1 - Confirmar Quantidade e Cotar Fretes</div>
+                <div class="info-resultado neutro">Comercial aprovou a devolucao. Confirme a quantidade, colete 3 cotacoes e informe o cliente.</div>
+                <div class="campo"><label>Quantidade Confirmada (metros) *</label><input type="number" id="dv-qtd" value="${dv.quantidade_confirmada||''}" step="0.01" /></div>
+                <div class="campo"><label>Cotacoes de Frete *</label>
+                    <table class="cotacoes-table"><thead><tr><th style="width:55%">Transportadora</th><th style="width:35%">Valor (R$)</th><th style="width:10%"></th></tr></thead>
+                    <tbody id="dv-cotacoes-linhas">${buildCotacoesLinhas(ce)}</tbody></table>
+                    <button type="button" class="btn-add-linha" onclick="addLinhaCotacao()">+ Adicionar cotacao</button>
+                </div>
+                <div class="campo"><label>Transportadora Escolhida *</label>
+                    <select id="dv-transp"><option value="">Selecione apos cotar...</option>${ot}</select></div>
+                <div class="campo"><label>Observacoes</label><textarea id="dv-obs" rows="2">${dv.observacoes||''}</textarea></div>
+            </div>`;
+            rodape.style.display='flex';
+            rodape.innerHTML=`${btn}<button class="btn btn-secondary" onclick="salvarRascunhoDevolucao()">Salvar Rascunho</button><button class="btn btn-primary" onclick="confirmarDevolucao()">Confirmar e Informar Cliente</button>`;
+        }
+        else if (status === 'encaminhando_devolucao_conferindo_nf' && ['admin','sac'].includes(perfil)) {
+            const dv = rec.devolucao || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 2 - Receber NF do Cliente</div>
+                <div class="info-resultado neutro">Transportadora: <strong>${dv.transportadora_escolhida||'-'}</strong> | Quantidade: <strong>${dv.quantidade_confirmada||'-'} m</strong><br><small>Cliente informado. Aguarde a NF e faca upload abaixo.</small></div>
+                <div class="campo"><label>Upload da NF do Cliente *</label>
+                    <div class="upload-area" onclick="document.getElementById('dv-nf-file').click()" id="dv-nf-upload-area">
+                        <input type="file" id="dv-nf-file" accept=".pdf,image/*" style="display:none" onchange="uploadNFCliente(this)" />
+                        ${dv.nf_cliente_url ? 'NF ja anexada - clique para substituir' : 'Clique para anexar a NF do cliente'}
+                    </div>
+                    <input type="hidden" id="dv-nf-url" value="${dv.nf_cliente_url||''}" />
+                    ${dv.nf_cliente_url ? '<a href="'+dv.nf_cliente_url+'" target="_blank" style="font-size:12px">Ver NF anexada</a>' : ''}
+                </div>
+                <div class="campo"><label>Observacoes</label><textarea id="dv-nf-obs" rows="2">${dv.observacoes_nf||''}</textarea></div>
+            </div>`;
+            rodape.style.display='flex';
+            rodape.innerHTML=`${btn}<button class="btn btn-primary" onclick="enviarNFParaFiscal()">Enviar NF para Fiscal</button>`;
+        }
+        else if (status === 'encaminhando_devolucao_conferindo_nf_fiscal' && ['admin','fiscal'].includes(perfil)) {
+            const dv = rec.devolucao || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 3 - Conferencia da NF (Fiscal)</div>
+                <div class="info-resultado neutro">Confira a NF do cliente e aprove ou reprove.</div>
+                ${dv.nf_cliente_url ? '<div class="campo"><a href="'+dv.nf_cliente_url+'" target="_blank" class="btn btn-secondary">Visualizar NF do Cliente</a></div>' : '<div class="info-resultado improcedente">NF nao foi anexada pelo SAC.</div>'}
+                <div class="campo"><label>A NF esta correta? *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item"><input type="radio" name="nf-ok" value="true" /> Sim, NF esta OK</label>
+                        <label class="radio-item"><input type="radio" name="nf-ok" value="false" /> Nao, ha problema</label>
+                    </div>
+                </div>
+                <div class="campo"><label>Detalhes do problema (obrigatorio se reprovada)</label>
+                    <textarea id="nf-descricao" rows="3" placeholder="Descreva o problema..."></textarea></div>
+            </div>`;
+            rodape.style.display='flex';
+            rodape.innerHTML=`${btn}<button class="btn btn-primary" onclick="concluirConferenciaNF()">Confirmar Conferencia</button>`;
+        }
+        else if (status === 'encaminhando_devolucao_corrigindo_nf' && ['admin','sac'].includes(perfil)) {
+            const dv = rec.devolucao || {};
+            const conf = rec.conferencia_nf || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 4 - Corrigir NF</div>
+                <div class="info-resultado improcedente"><strong>NF reprovada pelo Fiscal.</strong>${conf.descricao ? '<br>Motivo: '+conf.descricao : ''}</div>
+                <div class="campo"><label>Upload da NF Corrigida *</label>
+                    <div class="upload-area" onclick="document.getElementById('dv-nf-corr-file').click()">
+                        <input type="file" id="dv-nf-corr-file" accept=".pdf,image/*" style="display:none" onchange="uploadNFCorrigida(this)" />
+                        Clique para anexar a NF corrigida
+                    </div>
+                    <input type="hidden" id="dv-nf-corr-url" value="" />
+                </div>
+                <div class="campo"><label>Observacoes</label><textarea id="dv-nf-corr-obs" rows="2">${dv.observacoes_nf||''}</textarea></div>
+            </div>`;
+            rodape.style.display='flex';
+            rodape.innerHTML=`${btn}<button class="btn btn-primary" onclick="reenviarNFCorrigida()">Reenviar NF Corrigida</button>`;
+        }
+        else if (status === 'encaminhando_devolucao_sac_solicitar_coleta' && ['admin','sac'].includes(perfil)) {
+            const dv = rec.devolucao || {};
+            const col = rec.coleta || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 5 - Solicitar Coleta</div>
+                <div class="info-resultado procedente">NF aprovada pelo Fiscal. Solicite a coleta do material.</div>
+                <div class="grid-2">
+                    <div class="campo"><label>Transportadora *</label><input type="text" id="col-transp" value="${col.transportadora||dv.transportadora_escolhida||''}" /></div>
+                    <div class="campo"><label>NF de Coleta</label><input type="text" id="col-nf" value="${col.nf_coleta||''}" placeholder="Numero da NF..." /></div>
+                    <div class="campo"><label>Data da Coleta *</label><input type="date" id="col-data" value="${col.data_coleta||''}" /></div>
+                    <div class="campo"><label>Data Prevista de Chegada</label><input type="date" id="col-chegada" value="${col.data_prevista_chegada||''}" /></div>
+                </div>
+                <div class="campo"><label>Observacoes</label><textarea id="col-obs" rows="2">${col.observacoes||''}</textarea></div>
+            </div>`;
+            rodape.style.display='flex';
+            rodape.innerHTML=`${btn}<button class="btn btn-secondary" onclick="salvarRascunhoColeta()">Salvar Rascunho</button><button class="btn btn-primary" onclick="confirmarColeta()">Confirmar Coleta</button>`;
+        }
+
+                // ===== CRÉDITO — SAC confirma forma com o cliente =====
+        else if (status === 'gerando_credito_financeiro' && ['admin','sac'].includes(perfil)) {
+            const cr = rec.credito || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">💰 Crédito — Confirmação com o Cliente (SAC)</div>
+                <div class="info-resultado neutro">📋 O Comercial aprovou crédito. Confirme com o cliente a forma de geração antes de encaminhar ao Financeiro.</div>
+                <div class="campo">
+                    <label>Forma de Geração do Crédito *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item ${cr.forma_credito==='nota_credito'?'selecionado':''}" onclick="this.classList.add('selecionado');document.querySelectorAll('.radio-item').forEach(r=>r!==this&&r.classList.remove('selecionado'))">
+                            <input type="radio" name="cr-forma" value="nota_credito" ${cr.forma_credito==='nota_credito'?'checked':''} /> 📄 Nota de Crédito
+                        </label>
+                        <label class="radio-item ${cr.forma_credito==='abatimento'?'selecionado':''}" onclick="this.classList.add('selecionado');document.querySelectorAll('.radio-item').forEach(r=>r!==this&&r.classList.remove('selecionado'))">
+                            <input type="radio" name="cr-forma" value="abatimento" ${cr.forma_credito==='abatimento'?'checked':''} /> 💳 Abatimento em próxima NF
+                        </label>
+                        <label class="radio-item ${cr.forma_credito==='transferencia'?'selecionado':''}" onclick="this.classList.add('selecionado');document.querySelectorAll('.radio-item').forEach(r=>r!==this&&r.classList.remove('selecionado'))">
+                            <input type="radio" name="cr-forma" value="transferencia" ${cr.forma_credito==='transferencia'?'checked':''} /> 🏦 Transferência Bancária
+                        </label>
+                    </div>
+                </div>
+                <div class="campo"><label>Contato realizado com (nome)</label>
+                    <input type="text" id="cr-contato" value="${cr.contato_cliente||''}" placeholder="Nome do responsável no cliente confirmado..." />
+                </div>
+                <div class="campo"><label>Observações</label>
+                    <textarea id="cr-obs-sac" rows="3" placeholder="Detalhes do alinhamento com o cliente...">${cr.obs_sac||''}</textarea>
+                </div>
+                </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunhoCredito()">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="encaminharCreditoFinanceiro()">✅ Encaminhar ao Financeiro</button>`;
+        }
+
+        // ===== CRÉDITO — Financeiro executa =====
+        else if (status === 'gerando_credito_financeiro_exec' && ['admin','financeiro'].includes(perfil)) {
+            const cr = rec.credito || {};
+            const formaLabel = {nota_credito:'📄 Nota de Crédito', abatimento:'💳 Abatimento em próxima NF', transferencia:'🏦 Transferência Bancária'};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">💰 Geração de Crédito (Financeiro)</div>
+                <div class="info-resultado neutro"><strong>Forma definida pelo SAC:</strong> ${formaLabel[cr.forma_credito]||'—'} ${cr.contato_cliente?'— Contato: '+cr.contato_cliente:''}</div>
+                ${cr.obs_sac?`<div class="info-item" style="margin-bottom:16px"><label>Observações do SAC</label><span>${cr.obs_sac}</span></div>`:''}
+                <div class="campo"><label>Valor do Crédito (R$) *</label>
+                    <input type="number" id="cr-valor" value="${cr.valor_credito||''}" step="0.01" />
+                </div>
+                <div class="campo"><label>Observações Financeiro</label>
+                    <textarea id="cr-obs-fin" rows="3" placeholder="Detalhes da execução do crédito...">${cr.obs_financeiro||''}</textarea>
+                </div>
+                </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunho('credito')">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirCredito()">✅ Confirmar Crédito</button>`;
+        }
+
+        // ===== ENCERRAMENTO =====
+        else if (status === 'aguardando_encerramento_comercial' && ['admin','comercial'].includes(perfil)) {
+            const enc = rec.encerramento || {};
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">🏁 Encerramento</div>
+                <div class="campo"><label>Descrição do encerramento *</label>
+                    <textarea id="enc-desc" rows="4" placeholder="Descreva como foi resolvida...">${enc.descricao||''}</textarea></div>
+                </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-success" onclick="encerrar()">✅ Encerrar Reclamação</button>`;
+        }
+
+        // ===== CONCLUÍDA / CANCELADA =====
+        else if (['concluida','cancelada'].includes(status)) {
+            secao.innerHTML = `<div class="card secao" style="background:${status==='concluida'?'#e8f5e9':'#ffebee'};border:none;">
+                <div class="secao-titulo">${status==='concluida'?'✅ Reclamação Concluída':'❌ Cancelada'}</div>
+                <p style="color:#555;font-size:13px">Encerrada em ${fmt(rec.concluida_em||rec.atualizado_em)}.</p></div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = btn;
+        }
+
+        // ===== EM ANDAMENTO (outro setor) =====
+        else {
+            secao.innerHTML = `<div class="card secao">
+                <div class="secao-titulo">⏳ ${statusLabel[status]||status}</div>
+                <p style="color:#666;font-size:13px">Esta etapa está sendo processada por outro setor.</p></div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = btn;
+        }
+    }
+
+    function toggleCamposAvaliacao(prefixo) {
+        const resultado = document.getElementById(prefixo+'-resultado').value;
+        const div = document.getElementById(prefixo+'-campos-proc');
+        if (div) div.style.display = (resultado==='procedente') ? 'block' : 'none';
+    }
+
+    // ===== AÇÕES =====
+
+    async function enviarParaQualidade() {
+        const r = await api('PUT', '/reclamacoes/'+recId, { cliente_id:reclamacao.cliente_id, nossa_nf:reclamacao.nossa_nf, lote:reclamacao.lote, metragem:reclamacao.metragem, descricao:reclamacao.descricao, concluir:true });
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    function getDadosAvaliacao(prefixo) {
+        let plano_acao = '';
+        try {
+            const linhasJson = getPlanoAcao(prefixo);
+            const linhas = JSON.parse(linhasJson || '[]');
+            plano_acao = linhas.filter(l=>l.acao&&l.acao.trim()).map((l,i)=>{const prazo=l.prazo?new Date(l.prazo+'T00:00:00').toLocaleDateString('pt-BR'):'—';return `${i+1}. ${l.acao.trim()} | Resp: ${l.responsavel||'—'} | Prazo: ${prazo} | Status: ${l.status||'pendente'} | Eficácia: ${l.eficacia||'—'}`;}).join('\n');
+        } catch(e) { plano_acao = ''; }
+        return {
+            resultado:  document.getElementById(prefixo+'-resultado')?.value || '',
+            descricao:  document.getElementById(prefixo+'-descricao')?.value.trim() || '',
+            causa_raiz: document.getElementById(prefixo+'-causa-raiz')?.value.trim() || '',
+            plano_acao,
+            areas:      getChecked(prefixo+'-area'),
+            defeitos:   getChecked(prefixo+'-defeito'),
+        };
+    }
+
+    async function salvarRascunho(etapa) {
+        let corpo = {};
+        if (etapa==='avaliacao')          corpo = getDadosAvaliacao('av');
+        else if (etapa==='avaliacao-pos-visita') corpo = getDadosAvaliacao('pv');
+        else if (etapa==='visita')        corpo = { data_visita: document.getElementById('vt-data').value, hora_visita: document.getElementById('vt-hora').value, responsavel_cliente: document.getElementById('vt-resp').value.trim(), descricao: document.getElementById('vt-desc').value.trim() };
+        else if (etapa==='direcionamento') corpo = { decisao: document.querySelector('input[name="dir-decisao"]:checked')?.value||'', descricao_encerramento: document.getElementById('dir-obs').value.trim() };
+        else if (etapa==='devolucao')     corpo = { quantidade_confirmada: document.getElementById('dv-qtd')?.value, transportadora_escolhida: document.getElementById('dv-transp')?.value.trim()||'', nf_cliente_url: document.getElementById('dv-nf')?.value.trim()||'', romaneio: document.getElementById('dv-romaneio')?.value.trim()||'', observacoes: document.getElementById('dv-obs')?.value.trim()||'', cotacoes: getCotacoes() };
+        else if (etapa==='credito')       corpo = { valor_credito: document.getElementById('cr-valor').value };
+        const r = await api('POST', '/reclamacoes/'+recId+'/'+etapa+'/rascunho', corpo);
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro ao salvar rascunho.');
+    }
+
+    async function concluirAvaliacao(prefixo, rota) {
+        const dados = getDadosAvaliacao(prefixo);
+        if (!dados.resultado) { alert('Selecione o resultado.'); return; }
+        const r = await api('POST', '/reclamacoes/'+recId+rota, dados);
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    async function concluirVisita() {
+        const data_visita = document.getElementById('vt-data').value;
+        if (!data_visita) { alert('Informe a data da visita.'); return; }
+        const r = await api('POST', '/reclamacoes/'+recId+'/visita', { data_visita, hora_visita: document.getElementById('vt-hora').value, responsavel_cliente: document.getElementById('vt-resp').value.trim(), descricao: document.getElementById('vt-desc').value.trim() });
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    async function concluirDirecionamento() {
+        const decisao = document.querySelector('input[name="dir-decisao"]:checked')?.value;
+        if (!decisao) { alert('Selecione uma decisão.'); return; }
+        const r = await api('POST', '/reclamacoes/'+recId+'/direcionamento', { decisao, descricao_encerramento: document.getElementById('dir-obs').value.trim() });
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    async function salvarRascunhoDevolucao() {
+        const r = await api('POST','/reclamacoes/'+recId+'/devolucao/rascunho',{quantidade_confirmada:document.getElementById('dv-qtd')?.value||null,observacoes:document.getElementById('dv-obs')?.value.trim()||'',cotacoes:getCotacoes()});
+        if(r.ok)alert('Rascunho salvo!');else alert(r.dados?.erro||'Erro.');
+    }
+    async function confirmarDevolucao() {
+        const qtd=document.getElementById('dv-qtd')?.value,transp=document.getElementById('dv-transp')?.value;
+        if(!qtd){alert('Informe a quantidade.');return;}if(!transp){alert('Selecione a transportadora.');return;}
+        if(getCotacoes().length<1){alert('Adicione ao menos uma cotacao.');return;}
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/confirmar',{quantidade_confirmada:qtd,transportadora_escolhida:transp,observacoes:document.getElementById('dv-obs')?.value.trim()||'',cotacoes:getCotacoes()});
+        if(r.ok)window.location.reload();else alert(r.dados?.erro||'Erro.');
+    }
+    async function uploadNFCliente(input) {
+        if(!input.files||!input.files[0])return;
+        const file=input.files[0],fd=new FormData();fd.append('arquivos',file);fd.append('etapa','nf_cliente');
+        const resp=await fetch('/api/reclamacoes/'+recId+'/arquivos',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('token')},body:fd});
+        const data=await resp.json();
+        const arq=Array.isArray(data)?data[0]:data;
+        if(arq&&arq.caminho){document.getElementById('dv-nf-url').value=arq.caminho;document.getElementById('dv-nf-upload-area').innerHTML='Anexado: '+file.name;}
+        else alert('Erro ao fazer upload.');
+    }
+    async function enviarNFParaFiscal() {
+        const url=document.getElementById('dv-nf-url')?.value;
+        if(!url){alert('Anexe a NF do cliente.');return;}
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/nf',{nf_cliente_url:url,observacoes_nf:document.getElementById('dv-nf-obs')?.value.trim()||''});
+        if(r.ok)window.location.reload();else alert(r.dados?.erro||'Erro.');
+    }
+    async function concluirConferenciaNF() {
+        const nfOk=document.querySelector('input[name="nf-ok"]:checked')?.value;
+        if(!nfOk){alert('Informe se a NF esta OK.');return;}
+        const desc=document.getElementById('nf-descricao')?.value.trim();
+        if(nfOk==='false'&&!desc){alert('Descreva o problema na NF.');return;}
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/conferencia-nf',{nf_ok:nfOk==='true',descricao:desc});
+        if(r.ok)window.location.reload();else alert(r.dados?.erro||'Erro.');
+    }
+    async function uploadNFCorrigida(input) {
+        if(!input.files||!input.files[0])return;
+        const file=input.files[0],fd=new FormData();fd.append('arquivos',file);fd.append('etapa','nf_cliente');
+        const resp=await fetch('/api/reclamacoes/'+recId+'/arquivos',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('token')},body:fd});
+        const data=await resp.json();
+        const arq=Array.isArray(data)?data[0]:data;
+        if(arq&&arq.caminho){document.getElementById('dv-nf-corr-url').value=arq.caminho;}
+        else alert('Erro ao fazer upload.');
+    }
+    async function reenviarNFCorrigida() {
+        const url=document.getElementById('dv-nf-corr-url')?.value;
+        if(!url){alert('Anexe a NF corrigida.');return;}
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/corrigir-nf',{nf_cliente_url:url,observacoes_nf:document.getElementById('dv-nf-corr-obs')?.value.trim()||''});
+        if(r.ok)window.location.reload();else alert(r.dados?.erro||'Erro.');
+    }
+    async function salvarRascunhoColeta() {
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/coleta/rascunho',{transportadora:document.getElementById('col-transp')?.value.trim()||'',nf_coleta:document.getElementById('col-nf')?.value.trim()||'',data_coleta:document.getElementById('col-data')?.value||null,data_prevista_chegada:document.getElementById('col-chegada')?.value||null,observacoes:document.getElementById('col-obs')?.value.trim()||''});
+        if(r.ok)alert('Rascunho salvo!');else alert(r.dados?.erro||'Erro.');
+    }
+    async function confirmarColeta() {
+        const transp=document.getElementById('col-transp')?.value.trim(),data=document.getElementById('col-data')?.value;
+        if(!transp){alert('Informe a transportadora.');return;}if(!data){alert('Informe a data da coleta.');return;}
+        const r=await api('POST','/reclamacoes/'+recId+'/devolucao/coleta',{transportadora:transp,nf_coleta:document.getElementById('col-nf')?.value.trim()||'',data_coleta:data,data_prevista_chegada:document.getElementById('col-chegada')?.value||null,observacoes:document.getElementById('col-obs')?.value.trim()||''});
+        if(r.ok)window.location.reload();else alert(r.dados?.erro||'Erro.');
+    }
+    async function concluirCredito() {
+        const valor_credito = document.getElementById('cr-valor')?.value;
+        if (!valor_credito) { alert('Informe o valor.'); return; }
+        const obs_financeiro = document.getElementById('cr-obs-fin')?.value.trim()||'';
+        const r = await api('POST', '/reclamacoes/'+recId+'/credito', { valor_credito, obs_financeiro });
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    async function encerrar() {
+        const descricao = document.getElementById('enc-desc').value.trim();
+        if (!descricao) { alert('Informe a descrição.'); return; }
+        const r = await api('POST', '/reclamacoes/'+recId+'/encerrar', { descricao });
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    async function uploadArquivos(files, etapa) {
+        if (!files||!files.length) return;
+        const snap = {};
+        ['av-resultado','av-descricao','av-causa-raiz','av-plano-acao',
+         'pv-resultado','pv-descricao','pv-causa-raiz','pv-plano-acao',
+         'vt-data','vt-hora','vt-resp','vt-desc','dir-obs','dv-qtd','dv-transp','dv-nf','cr-valor','enc-desc'].forEach(id => {
+            const el = document.getElementById(id); if (el) snap[id] = el.value;
+        });
+        const checkeds = {};
+        document.querySelectorAll('input[type=checkbox]:checked').forEach(el => {
+            if (!checkeds[el.name]) checkeds[el.name] = [];
+            checkeds[el.name].push(el.value);
+        });
+        const radioChecked = document.querySelector('input[name="dir-decisao"]:checked')?.value;
+
+        const fd = new FormData();
+        Array.from(files).forEach(f => fd.append('arquivos', f));
+        fd.append('etapa', etapa);
+        await fetch(`/api/reclamacoes/${recId}/arquivos`, { method:'POST', headers:{'Authorization':'Bearer '+getToken()}, body:fd });
+        await carregar();
+
+        Object.entries(snap).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
+        Object.entries(checkeds).forEach(([name, vals]) => {
+            document.querySelectorAll(`input[name="${name}"]`).forEach(el => { el.checked = vals.includes(el.value); });
+        });
+        if (radioChecked) {
+            const radio = document.querySelector(`input[name="dir-decisao"][value="${radioChecked}"]`);
+            if (radio) { radio.checked = true; radio.closest('.radio-item')?.classList.add('selecionado'); }
+        }
+    }
+
+    // ===== PLANO DE AÇÃO — helpers =====
+    function buildPlanoLinhas(planoAcao, prefixo) {
+        let linhas = [];
+        try {
+            if (!planoAcao) {
+                // vazio
+            } else if (planoAcao.startsWith('[')) {
+                // formato JSON
+                linhas = JSON.parse(planoAcao);
+            } else {
+                // formato texto: "1. ação | Resp: x | Prazo: dd/mm/aaaa | Status: y | Eficácia: z"
+                const sMap = { 'Pendente':'pendente', 'Em andamento':'em_andamento', 'Concluído':'concluido', 'Concluido':'concluido' };
+                const eMap = { 'Eficaz':'eficaz', 'Parcial':'parcial', 'Não eficaz':'nao_eficaz', 'Nao eficaz':'nao_eficaz' };
+                linhas = planoAcao.split('\n').filter(l => l.trim()).map(linha => {
+                    const partes = linha.replace(/^\d+\.\s*/, '').split(' | ');
+                    const get = (prefix) => {
+                        const p = partes.find(p => p.startsWith(prefix));
+                        return p ? p.replace(prefix, '').trim() : '';
+                    };
+                    const prazoStr = get('Prazo:');
+                    let prazoISO = '';
+                    if (prazoStr && prazoStr !== '—') {
+                        const [d, m, a] = prazoStr.split('/');
+                        if (d && m && a) prazoISO = `${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                    }
+                    return {
+                        acao:        partes[0] || '',
+                        responsavel: get('Resp:').replace(/^—$/, ''),
+                        prazo:       prazoISO,
+                        status:      sMap[get('Status:')] || 'pendente',
+                        eficacia:    eMap[get('Eficácia:') || get('Eficacia:')] || '',
+                    };
+                });
+            }
+        } catch(e) {}
+        if (!linhas.length) linhas = [{ acao:'', responsavel:'', prazo:'', eficacia:'', status:'pendente' }];
+        return linhas.map((l,i) => renderLinhaPlano(l, i, prefixo)).join('');
+    }
+
+    function renderLinhaPlano(l, i, prefixo) {
+        return `<tr id="${prefixo}-pl-${i}">
+            <td><input type="text" data-campo="acao" value="${(l.acao||'').replace(/"/g,'&quot;')}" placeholder="Descreva a ação..." /></td>
+            <td><input type="text" data-campo="responsavel" value="${(l.responsavel||'').replace(/"/g,'&quot;')}" placeholder="Responsável..." /></td>
+            <td><input type="date" data-campo="prazo" value="${l.prazo||''}" /></td>
+            <td><select data-campo="eficacia">
+                <option value="" ${!l.eficacia?'selected':''}>—</option>
+                <option value="eficaz" ${l.eficacia==='eficaz'?'selected':''}>✅ Eficaz</option>
+                <option value="parcial" ${l.eficacia==='parcial'?'selected':''}>⚠️ Parcial</option>
+                <option value="nao_eficaz" ${l.eficacia==='nao_eficaz'?'selected':''}>❌ Não eficaz</option>
+            </select></td>
+            <td><select data-campo="status">
+                <option value="pendente" ${(!l.status||l.status==='pendente')?'selected':''}>⏳ Pendente</option>
+                <option value="em_andamento" ${l.status==='em_andamento'?'selected':''}>🔄 Andamento</option>
+                <option value="concluido" ${l.status==='concluido'?'selected':''}>✅ Concluído</option>
+            </select></td>
+            <td><button type="button" class="btn-del-linha" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>`;
+    }
+
+    function addLinhaPlano(prefixo) {
+        const tbody = document.getElementById(prefixo+'-plano-linhas');
+        const i = Date.now(); // usa timestamp para evitar conflito de IDs
+        tbody.insertAdjacentHTML('beforeend', renderLinhaPlano({}, i, prefixo));
+    }
+
+    function getPlanoAcao(prefixo) {
+        const tbody = document.getElementById(prefixo+'-plano-linhas');
+        if (!tbody) return '[]';
+        const linhas = Array.from(tbody.rows).map(tr => ({
+            acao:        tr.querySelector('[data-campo="acao"]')?.value || '',
+            responsavel: tr.querySelector('[data-campo="responsavel"]')?.value || '',
+            prazo:       tr.querySelector('[data-campo="prazo"]')?.value || '',
+            eficacia:    tr.querySelector('[data-campo="eficacia"]')?.value || '',
+            status:      tr.querySelector('[data-campo="status"]')?.value || 'pendente',
+        }));
+        return JSON.stringify(linhas);
+    }
+
+    // ===== COTAÇÕES — helpers =====
+    function buildCotacoesLinhas(cotacoes) {
+        if(!cotacoes||!cotacoes.length)return'';
+        return cotacoes.map(co=>'<tr><td><input type="text" value="'+(co.transportadora||'')+'" placeholder="Transportadora..." oninput="atualizarSelectTransp()" style="width:100%" /></td><td><input type="number" value="'+(co.valor||'')+'" placeholder="0,00" step="0.01" oninput="atualizarSelectTransp()" style="width:100%" /></td><td><button type="button" onclick="removerLinhaCotacao(this)" style="background:none;border:none;cursor:pointer;color:#c62828">X</button></td></tr>').join('');
+    }
+
+    function renderLinhaCotacao(l, i) {
+        return `<tr id="dv-cot-${i}">
+            <td><input type="text" value="${l.transp||''}" placeholder="Nome da transportadora..." /></td>
+            <td><input type="number" value="${l.valor||''}" step="0.01" placeholder="0,00" /></td>
+            <td><input type="text" value="${l.prazo||''}" placeholder="Ex: 3-5 dias úteis" /></td>
+            <td><button type="button" class="btn-del-linha" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>`;
+    }
+
+    function addLinhaCotacao() {
+        const tbody=document.getElementById('dv-cotacoes-linhas');if(!tbody)return;
+        const tr=document.createElement('tr');
+        tr.innerHTML='<td><input type="text" placeholder="Transportadora..." oninput="atualizarSelectTransp()" style="width:100%" /></td><td><input type="number" placeholder="0,00" step="0.01" oninput="atualizarSelectTransp()" style="width:100%" /></td><td><button type="button" onclick="removerLinhaCotacao(this)" style="background:none;border:none;cursor:pointer;color:#c62828">X</button></td>';
+        tbody.appendChild(tr);
+    }
+
+    function getCotacoes() {
+        const tbody=document.getElementById('dv-cotacoes-linhas');
+        if(!tbody)return[];
+        return Array.from(tbody.rows).map(tr=>{const inp=tr.querySelectorAll('input');return{transportadora:inp[0]?.value||'',valor:inp[1]?.value||''};}).filter(c=>c.transportadora);
+    }
+    function removerLinhaCotacao(btn) {
+        btn.closest('tr').remove();
+        atualizarSelectTransp();
+    }
+        function atualizarSelectTransp() {
+        const sel=document.getElementById('dv-transp');if(!sel||sel.tagName!=='SELECT')return;
+        const cots=getCotacoes(),atual=sel.value;
+        sel.innerHTML='<option value="">Selecione apos cotar...</option>'+cots.map(c=>'<option value="'+c.transportadora+'" '+(atual===c.transportadora?'selected':'')+'>'+c.transportadora+(c.valor?' - R$ '+parseFloat(c.valor).toFixed(2).replace('.',','):'')+' </option>').join('');
+    }
+
+    // ===== CRÉDITO SAC =====
+    async function salvarRascunhoCredito() {
+        const forma = document.querySelector('input[name="cr-forma"]:checked')?.value || '';
+        const corpo = { forma_credito: forma, contato_cliente: document.getElementById('cr-contato')?.value||'', obs_sac: document.getElementById('cr-obs-sac')?.value||'' };
+        const r = await api('POST', '/reclamacoes/'+recId+'/credito/rascunho', corpo);
+        if (r.ok) { alert('Rascunho salvo!'); } else alert(r.dados?.erro||'Erro ao salvar rascunho.');
+    }
+
+    async function encaminharCreditoFinanceiro() {
+        const forma = document.querySelector('input[name="cr-forma"]:checked')?.value;
+        if (!forma) { alert('Selecione a forma de geração do crédito.'); return; }
+        const corpo = { forma_credito: forma, contato_cliente: document.getElementById('cr-contato')?.value||'', obs_sac: document.getElementById('cr-obs-sac')?.value||'' };
+        const r = await api('POST', '/reclamacoes/'+recId+'/credito/confirmar-sac', corpo);
+        if (r.ok) window.location.href = '/pages/reclamacoes.html';
+        else alert(r.dados?.erro||'Erro.');
+    }
+
+    carregar();
+</script>
+</body>
+</html>

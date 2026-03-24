@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Reclamações — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .filtros { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+        .filtros input, .filtros select { padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px; outline:none; }
+        .filtros input:focus, .filtros select:focus { border-color:#2c2c2c; }
+        .btn-link { background:none; border:none; color:#1565c0; cursor:pointer; font-size:13px; text-decoration:underline; padding:0; }
+
+        /* Badges de status — cores distintas por grupo */
+        .badge-qualidade   { background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; }
+        .badge-comercial   { background:#fff3e0; color:#e65100; border:1px solid #ffcc80; }
+        .badge-visita      { background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; }
+        .badge-devolucao   { background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; }
+        .badge-credito     { background:#e0f7fa; color:#00695c; border:1px solid #80cbc4; }
+        .badge-encerramento{ background:#fce4ec; color:#880e4f; border:1px solid #f48fb1; }
+        .badge-concluida   { background:#e8f5e9; color:#1b5e20; border:1px solid #66bb6a; font-weight:700; }
+        .badge-cancelada   { background:#ffebee; color:#b71c1c; border:1px solid #ef9a9a; }
+        .badge-rascunho    { background:#f5f5f5; color:#616161; border:1px solid #bdbdbd; }
+        .badge-cadastrada  { background:#e8eaf6; color:#283593; border:1px solid #9fa8da; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 class="pagina-titulo" style="margin:0;">Reclamações</h2>
+            <a href="/pages/nova-reclamacao.html" class="btn btn-success" id="btn-nova">+ Nova Reclamação</a>
+        </div>
+
+        <div class="filtros">
+            <input type="text" id="filtro-busca" placeholder="🔍 Buscar por cliente, Nº ou artigo..." oninput="filtrar()" />
+            <select id="filtro-status" onchange="filtrar()">
+                <option value="">Todos os status</option>
+                <option value="minhas_pendencias">⚡ Minhas Pendências</option>
+                <option value="rascunho">Rascunho</option>
+                <option value="aguardando_analise_qualidade">Aguardando Qualidade</option>
+                <option value="aguardando_comercial_procedente">Aguardando Comercial</option>
+                <option value="aguardando_comercial_improcedente">Aguardando Comercial (Improcedente)</option>
+                <option value="aguardando_visita_tecnica_qualidade">Aguardando Visita Técnica</option>
+                <option value="encaminhando_devolucao_sac">Encaminhando Devolução</option>
+                <option value="gerando_credito_financeiro">Gerando Crédito</option>
+                <option value="aguardando_encerramento_comercial">Aguardando Encerramento</option>
+                <option value="concluida">Concluída</option>
+                <option value="cancelada">Cancelada</option>
+            </select>
+            <input type="date" id="filtro-de"  onchange="filtrar()" title="De" style="max-width:140px" />
+            <input type="date" id="filtro-ate" onchange="filtrar()" title="Até" style="max-width:140px" />
+            <button class="btn btn-secondary btn-sm" onclick="limparDatas()">✕ Datas</button>
+        </div>
+
+        <div class="card">
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nº</th>
+                            <th>Cliente</th>
+                            <th>Nossa NF</th>
+                            <th>Artigo</th>
+                            <th>Problema</th> <th>Status</th>
+                            <th>Aberta em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-body">
+                        <tr><td colspan="8" style="text-align:center;color:#999;">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    // Esconde botão Nova para quem não é SAC/Admin
+    const u = getUsuario();
+    if (!['admin','sac'].includes(u?.perfil)) {
+        document.getElementById('btn-nova').style.display = 'none';
+    }
+
+    let todasReclamacoes = [];
+
+    const statusLabel = {
+        rascunho:                                       { label: 'Rascunho',                  cor: 'badge-rascunho'    },
+        reclamacao_cadastrada:                          { label: 'Cadastrada',                 cor: 'badge-cadastrada'  },
+        aguardando_analise_qualidade:                   { label: 'Ag. Qualidade',              cor: 'badge-qualidade'   },
+        aguardando_comercial_procedente:                { label: 'Ag. Comercial',              cor: 'badge-comercial'   },
+        aguardando_comercial_improcedente:              { label: 'Ag. Comercial',              cor: 'badge-comercial'   },
+        aguardando_visita_tecnica_qualidade:            { label: 'Ag. Visita Técnica',         cor: 'badge-visita'      },
+        aguardando_direcionamento_comercial_pos_visita: { label: 'Ag. Direcionamento',         cor: 'badge-comercial'   },
+        encaminhando_devolucao_sac:                     { label: 'Encam. Devolução',           cor: 'badge-devolucao'   },
+        encaminhando_devolucao_conferindo_nf:           { label: 'Conferindo NF',              cor: 'badge-devolucao'   },
+        encaminhando_devolucao_corrigindo_nf:           { label: 'Corrigindo NF',              cor: 'badge-devolucao'   },
+        encaminhando_devolucao_sac_solicitar_coleta:    { label: 'Ag. Coleta',                 cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_chegada_material: { label: 'Ag. Material',           cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_revisao:      { label: 'Ag. Revisão',               cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_of:           { label: 'Ag. OF',                    cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_conferencia_material: { label: 'Ag. Conferência',   cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_correcao_nf_cliente:  { label: 'Ag. Correção NF',   cor: 'badge-devolucao'   },
+        gerando_credito_financeiro:                     { label: 'Gerando Crédito',            cor: 'badge-credito'     },
+        gerando_credito_sac:                            { label: 'Definindo Crédito',          cor: 'badge-credito'     },
+        aguardando_aprovacao_financeiro:                { label: 'Ag. Aprov. Financeiro',      cor: 'badge-credito'     },
+        aguardando_complemento_sac:                     { label: 'Ag. Complemento SAC',        cor: 'badge-comercial'   },
+        aguardando_encerramento_comercial:              { label: 'Ag. Encerramento',           cor: 'badge-encerramento'},
+        concluida:                                      { label: 'Concluída',                  cor: 'badge-concluida'   },
+        cancelada:                                      { label: 'Cancelada',                  cor: 'badge-cancelada'   },
+    };
+
+    function formatarData(dt) {
+        return new Date(dt).toLocaleDateString('pt-BR');
+    }
+
+    async function carregar() {
+        const r = await api('GET', '/reclamacoes');
+        if (!r.ok) return;
+        todasReclamacoes = r.dados;
+        filtrar();
+    }
+
+    function filtrar() {
+    const busca  = document.getElementById('filtro-busca').value.toLowerCase();
+    const status = document.getElementById('filtro-status').value;
+    const perfilLogado = u?.perfil; 
+
+    const filtradas = todasReclamacoes.filter(rec => {
+        const buscaOk = !busca ||
+            rec.cliente_nome.toLowerCase().includes(busca) ||
+            String(rec.codigo).includes(busca) ||
+            (rec.nossa_nf || '').toLowerCase().includes(busca) ||
+            (rec.descricao || '').toLowerCase().includes(busca) ||
+            (rec.artigo || '').toLowerCase().includes(busca);
+            const ehPendencia = (
+        (perfilLogado === 'qualidade'  && ['aguardando_analise_qualidade','aguardando_visita_tecnica_qualidade','aguardando_analise_qualidade_pos_visita'].includes(rec.status)) ||
+        (perfilLogado === 'comercial'  && ['aguardando_comercial_procedente','aguardando_comercial_improcedente','aguardando_encerramento_comercial','aguardando_direcionamento_comercial_pos_visita'].includes(rec.status)) ||
+        (perfilLogado === 'sac'        && ['rascunho','encaminhando_devolucao_sac','encaminhando_devolucao_conferindo_nf','encaminhando_devolucao_corrigindo_nf','encaminhando_devolucao_sac_solicitar_coleta','gerando_credito_sac','encaminhando_devolucao_aguardando_correcao_nf_cliente'].includes(rec.status)) ||
+        (perfilLogado === 'expedicao'  && rec.status === 'encaminhando_devolucao_aguardando_chegada_material') ||
+        (perfilLogado === 'revisao'    && rec.status === 'encaminhando_devolucao_aguardando_revisao') ||
+        (perfilLogado === 'pcp'        && rec.status === 'encaminhando_devolucao_aguardando_of') ||
+        (perfilLogado === 'fiscal'     && ['encaminhando_devolucao_conferindo_nf_fiscal','encaminhando_devolucao_aguardando_conferencia_material','gerando_credito_financeiro'].includes(rec.status)) ||
+        (perfilLogado === 'financeiro' && ['gerando_credito_financeiro','aguardando_aprovacao_financeiro'].includes(rec.status)) ||
+        (perfilLogado === 'financeiro' && rec.status === 'gerando_credito_financeiro')
+    );
+    const statusOk = !status || (status === 'minhas_pendencias' ? ehPendencia : rec.status === status);
+        const de  = document.getElementById('filtro-de')?.value || '';
+        const ate = document.getElementById('filtro-ate')?.value || '';
+        const dataRec = rec.criado_em ? rec.criado_em.split('T')[0] : '';
+        const deOk  = !de  || dataRec >= de;
+        const ateOk = !ate || dataRec <= ate;
+        return buscaOk && statusOk && deOk && ateOk;
+    });
+
+    const tbody = document.getElementById('tabela-body');
+    if (!filtradas.length) {
+        // Ajustado o colspan para 7, pois adicionamos uma coluna
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">Nenhuma reclamação encontrada.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtradas.map(rec => {
+        const s = statusLabel[rec.status] || { label: rec.status, cor: 'badge-cinza' };
+        
+        // Trata a descrição para não quebrar a tabela (remove quebras de linha e limita tamanho)
+        const descLimpa = (rec.descricao || '').replace(/\n/g, ' ');
+        
+        // --- LÓGICA DE PENDÊNCIA ---
+        let ehMinhaPendencia = false;
+
+        if (perfilLogado === 'qualidade'  && ['aguardando_analise_qualidade','aguardando_visita_tecnica_qualidade','aguardando_analise_qualidade_pos_visita'].includes(rec.status)) ehMinhaPendencia = true;
+        if (perfilLogado === 'comercial'  && ['aguardando_comercial_procedente','aguardando_comercial_improcedente','aguardando_encerramento_comercial','aguardando_direcionamento_comercial_pos_visita'].includes(rec.status)) ehMinhaPendencia = true;
+        if (perfilLogado === 'sac'        && ['rascunho','encaminhando_devolucao_sac','encaminhando_devolucao_conferindo_nf','encaminhando_devolucao_corrigindo_nf','encaminhando_devolucao_sac_solicitar_coleta','gerando_credito_sac','encaminhando_devolucao_aguardando_correcao_nf_cliente'].includes(rec.status)) ehMinhaPendencia = true;
+        if (perfilLogado === 'expedicao'  && rec.status === 'encaminhando_devolucao_aguardando_chegada_material') ehMinhaPendencia = true;
+        if (perfilLogado === 'revisao'    && rec.status === 'encaminhando_devolucao_aguardando_revisao') ehMinhaPendencia = true;
+        if (perfilLogado === 'pcp'        && rec.status === 'encaminhando_devolucao_aguardando_of') ehMinhaPendencia = true;
+        if (perfilLogado === 'fiscal'     && ['encaminhando_devolucao_conferindo_nf_fiscal','encaminhando_devolucao_aguardando_conferencia_material','gerando_credito_financeiro'].includes(rec.status)) ehMinhaPendencia = true;
+        if (perfilLogado === 'financeiro' && ['gerando_credito_financeiro','aguardando_aprovacao_financeiro'].includes(rec.status)) ehMinhaPendencia = true;
+        // ---------------------------
+
+        const classeLinha = ehMinhaPendencia ? 'linha-pendente' : '';
+        const raio = ehMinhaPendencia ? '<span class="icon-pendencia" title="Sua ação é necessária">⚡</span>' : '';
+
+        return `
+            <tr class="${classeLinha}">
+                <td>${raio}<strong>REC-${String(rec.codigo).padStart(6,'0')}</strong></td>
+                <td>${rec.cliente_nome}</td>
+                <td>${rec.nossa_nf || '—'}</td>
+                <td>${rec.artigo || '—'}</td>
+                <td class="col-descricao" title="${descLimpa}">${descLimpa}</td>
+                <td><span class="badge ${s.cor}">${s.label}</span></td>
+                <td>${formatarData(rec.criado_em)}</td>
+                <td style="white-space:nowrap">
+                    <a href="/pages/detalhe-reclamacao.html?id=${rec.id}" 
+                       class="btn ${ehMinhaPendencia ? 'btn-success' : 'btn-secondary'}">
+                       ${ehMinhaPendencia ? 'Atender' : 'Ver Detalhes'}
+                    </a>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+    function limparDatas() {
+        document.getElementById('filtro-de').value = '';
+        document.getElementById('filtro-ate').value = '';
+        filtrar();
+    }
+
+    carregar().then(() => {
+        // Pré-filtrar se vier com ?status= do Painel de Gestão
+        const params = new URLSearchParams(window.location.search);
+        const statusParam = params.get('status');
+        if (statusParam) {
+            const sel = document.getElementById('filtro-status');
+            if (sel) { sel.value = statusParam; filtrar(); }
+        }
+    });
+</script>
+</body>
+</html>

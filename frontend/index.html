@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — SIGRA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .link-esqueci {
+            display: block;
+            text-align: right;
+            font-size: 12px;
+            color: #1a237e;
+            cursor: pointer;
+            margin-top: -8px;
+            margin-bottom: 16px;
+            text-decoration: underline;
+        }
+        .link-esqueci:hover { color: #e65100; }
+        #painel-esqueci { display: none; }
+        .voltar-login {
+            font-size: 12px;
+            color: #888;
+            cursor: pointer;
+            margin-top: 12px;
+            text-align: center;
+            display: block;
+        }
+        .voltar-login:hover { color: #1a237e; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <div class="login-box">
+        <img src="css/logo-sigra.png" alt="SIGRA" style="width:220px;display:block;margin:0 auto 24px;border-radius:8px;" />
+
+        <div id="alerta" class="alerta erro"></div>
+
+        <!-- Painel Login -->
+        <div id="painel-login">
+            <div class="campo">
+                <label>E-mail</label>
+                <input type="email" id="email" placeholder="seu@email.com.br" />
+            </div>
+            <div class="campo">
+                <label>Senha</label>
+                <input type="password" id="senha" placeholder="••••••••" />
+            </div>
+            <span class="link-esqueci" onclick="mostrarEsqueci()">Esqueci minha senha</span>
+            <button class="btn btn-primary" id="btnLogin">Entrar</button>
+        </div>
+
+        <!-- Painel Esqueci Senha -->
+        <div id="painel-esqueci">
+            <p style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.5;">
+                Digite seu e-mail cadastrado e enviaremos um link para redefinição de senha.
+            </p>
+            <div class="campo">
+                <label>E-mail cadastrado</label>
+                <input type="email" id="email-esqueci" placeholder="seu@email.com.br" />
+            </div>
+            <button class="btn btn-primary" id="btnEsqueci">Enviar link de redefinição</button>
+            <span class="voltar-login" onclick="mostrarLogin()">← Voltar para o login</span>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    if (getToken()) window.location.href = 'pages/dashboard.html';
+
+    const alerta = document.getElementById('alerta');
+
+    function mostrarAlerta(msg, tipo) {
+        alerta.className = 'alerta ' + tipo + ' visivel';
+        alerta.textContent = msg;
+    }
+
+    function limparAlerta() {
+        alerta.className = 'alerta erro';
+        alerta.textContent = '';
+    }
+
+    function mostrarEsqueci() {
+        limparAlerta();
+        document.getElementById('painel-login').style.display   = 'none';
+        document.getElementById('painel-esqueci').style.display = 'block';
+        document.getElementById('email-esqueci').focus();
+    }
+
+    function mostrarLogin() {
+        limparAlerta();
+        document.getElementById('painel-esqueci').style.display = 'none';
+        document.getElementById('painel-login').style.display   = 'block';
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim();
+        const senha = document.getElementById('senha').value;
+        const btn   = document.getElementById('btnLogin');
+
+        limparAlerta();
+        if (!email || !senha) { mostrarAlerta('Preencha e-mail e senha.', 'erro'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Entrando...';
+
+        const resultado = await api('POST', '/auth/login', { email, senha });
+
+        if (resultado && resultado.ok) {
+            salvarSessao(resultado.dados.token, resultado.dados.usuario);
+            window.location.href = 'pages/dashboard.html';
+        } else {
+            mostrarAlerta(resultado?.dados?.erro || 'E-mail ou senha incorretos.', 'erro');
+            btn.disabled = false;
+            btn.textContent = 'Entrar';
+        }
+    });
+
+    document.getElementById('senha').addEventListener('keypress', e => {
+        if (e.key === 'Enter') document.getElementById('btnLogin').click();
+    });
+
+    document.getElementById('btnEsqueci').addEventListener('click', async () => {
+        const emailUsuario = document.getElementById('email-esqueci').value.trim();
+        const btn = document.getElementById('btnEsqueci');
+
+        limparAlerta();
+        if (!emailUsuario) { mostrarAlerta('Informe o e-mail.', 'erro'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        const resultado = await api('POST', '/usuarios/esqueci-senha', { emailUsuario });
+
+        if (resultado && resultado.ok) {
+            mostrarAlerta('E-mail enviado! Verifique sua caixa de entrada.', 'sucesso');
+            document.getElementById('email-esqueci').value = '';
+        } else {
+            mostrarAlerta(resultado?.dados?.erro || 'Erro ao enviar e-mail.', 'erro');
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Enviar link de redefinição';
+    });
+
+    document.getElementById('email-esqueci').addEventListener('keypress', e => {
+        if (e.key === 'Enter') document.getElementById('btnEsqueci').click();
+    });
+</script>
+
+</body>
+</html>

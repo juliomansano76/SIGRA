@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Plano de Ação — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .filtros { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+        .filtros select, .filtros input { padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px; outline:none; background:#fff; }
+        .filtros select:focus, .filtros input:focus { border-color:#2c2c2c; }
+
+        .resumo-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+        .resumo-card { background:#fff; border:1px solid #e8e8e8; border-radius:10px; padding:20px; text-align:center; }
+        .resumo-card .num { font-size:36px; font-weight:700; line-height:1; margin-bottom:4px; }
+        .resumo-card .lbl { font-size:12px; color:#888; }
+        .resumo-card.pendente .num  { color:#e65100; }
+        .resumo-card.andamento .num { color:#1565c0; }
+        .resumo-card.vencido .num   { color:#c62828; }
+
+        .pa-card { background:#fff; border:1px solid #e8e8e8; border-radius:10px; margin-bottom:12px; overflow:hidden; transition:box-shadow .15s; }
+        .pa-card:hover { box-shadow:0 2px 12px rgba(0,0,0,.07); }
+
+        .pa-header {
+            display:flex; align-items:center; gap:10px;
+            padding:12px 16px; background:#f8f8f8; border-bottom:2px solid #eee;
+            font-size:13px; color:#666;
+        }
+        .pa-header a { font-weight:700; color:#1565c0; text-decoration:none; font-size:14px; }
+        .pa-header a:hover { text-decoration:underline; }
+        .pa-header .tag { margin-left:auto; background:#efefef; border-radius:20px; padding:3px 12px; font-size:11px; color:#888; font-weight:600; }
+
+        /* Grid: ação+obs | responsável | prazo | status | eficácia | salvar */
+        .pa-thead {
+            display:grid;
+            grid-template-columns: 1fr 140px 120px 155px 165px 90px;
+            padding:7px 16px;
+            background:#f5f5f5; border-bottom:1px solid #e8e8e8;
+            font-size:11px; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:.5px; gap:10px;
+        }
+
+        .pa-row {
+            display:grid;
+            grid-template-columns: 1fr 140px 120px 155px 165px 90px;
+            border-bottom:1px solid #f2f2f2;
+            gap:10px; align-items:start;
+            transition:background .1s;
+        }
+        .pa-row:last-child { border-bottom:none; }
+        .pa-row:hover { background:#fafbff; }
+        .pa-row.status-concluido   { background:#f6fff6; }
+        .pa-row.status-em_andamento{ background:#f5f8ff; }
+
+        /* Coluna da ação */
+        .pa-col-acao {
+            padding:14px 10px 14px 16px;
+            border-right:1px solid #f0f0f0;
+        }
+        .pa-nome {
+            font-size:13px; font-weight:600; color:#1a1a1a; line-height:1.4; margin-bottom:10px;
+        }
+        .pa-obs-label {
+            font-size:10px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.5px;
+            margin-bottom:4px; display:block;
+        }
+        .pa-obs-area {
+            width:100%; border:1px solid #e8e8e8; border-radius:6px;
+            padding:8px 10px; font-size:12px; font-family:inherit; color:#555;
+            outline:none; background:#fafafa; box-sizing:border-box;
+            resize:none; min-height:60px; line-height:1.5;
+            transition:border .15s, background .15s;
+        }
+        .pa-obs-area:focus { border-color:#1565c0; background:#fff; }
+        .pa-obs-area::placeholder { color:#ccc; font-style:italic; }
+
+        /* Colunas de controles */
+        .pa-col { padding:14px 4px; }
+        .pa-col-label { font-size:10px; font-weight:700; color:#ccc; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
+
+        .pa-row input[type="text"],
+        .pa-row input[type="date"],
+        .pa-row select {
+            width:100%; border:1px solid #e0e0e0; border-radius:6px;
+            padding:7px 8px; font-size:12px; font-family:inherit;
+            outline:none; background:#fff; box-sizing:border-box;
+            transition:border .15s;
+        }
+        .pa-row input:focus, .pa-row select:focus { border-color:#1565c0; }
+        .pa-vencida { color:#c62828; font-size:11px; font-weight:600; margin-top:4px; }
+
+        .pa-col-salvar { padding:14px 16px 14px 4px; display:flex; align-items:flex-start; padding-top:14px; }
+        .btn-salvar {
+            background:#1565c0; color:#fff; border:none; border-radius:6px;
+            padding:7px 14px; cursor:pointer; font-size:12px; font-weight:600;
+            transition:all .15s; white-space:nowrap; width:100%;
+        }
+        .btn-salvar:hover  { background:#0d47a1; }
+        .btn-salvar.saved  { background:#2e7d32; }
+        .btn-salvar:disabled { opacity:.6; cursor:not-allowed; }
+
+        .vazio { text-align:center; padding:48px 24px; color:#bbb; font-size:14px; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 class="pagina-titulo" style="margin:0;">📋 Acompanhamento — Planos de Ação</h2>
+        </div>
+
+        <div class="resumo-cards">
+            <div class="resumo-card pendente"><div class="num" id="cnt-pendente">—</div><div class="lbl">Pendentes</div></div>
+            <div class="resumo-card andamento"><div class="num" id="cnt-andamento">—</div><div class="lbl">Em Andamento</div></div>
+            <div class="resumo-card vencido"><div class="num" id="cnt-vencido">—</div><div class="lbl">Vencidas</div></div>
+        </div>
+
+        <div class="filtros">
+            <input type="text" id="filtro-busca" placeholder="🔍 Buscar ação ou reclamação..." oninput="filtrar()" style="min-width:260px" />
+            <select id="filtro-status" onchange="filtrar()">
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="em_andamento">Em Andamento</option>
+            </select>
+            <select id="filtro-vencido" onchange="filtrar()">
+                <option value="">Todos os prazos</option>
+                <option value="vencido">Vencidas</option>
+                <option value="hoje">Vencem hoje</option>
+                <option value="semana">Vencem esta semana</option>
+            </select>
+        </div>
+
+        <div id="lista-planos">
+            <p style="color:#999;text-align:center;padding:40px">Carregando...</p>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+    const usuario = getUsuario();
+    if (!['admin','qualidade'].includes(usuario && usuario.perfil)) {
+        window.location.href = '/pages/reclamacoes.html';
+    }
+
+    let todosItens = [];
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    function prazoDate(p) {
+        if (!p) return null;
+        var s = p.substring(0,10).split('-');
+        return new Date(parseInt(s[0]), parseInt(s[1])-1, parseInt(s[2]));
+    }
+
+    function prazoISO(d) { return d ? d.split('T')[0] : ''; }
+    function isVencido(p) { var d=prazoDate(p); return d ? d < hoje : false; }
+    function isHoje(p)    { var d=prazoDate(p); return d ? d.getTime()===hoje.getTime() : false; }
+    function isSemana(p)  { var d=prazoDate(p); if(!d) return false; var f=new Date(hoje); f.setDate(f.getDate()+7); return d>hoje&&d<=f; }
+
+    async function carregar() {
+        var r = await api('GET', '/reclamacoes/plano-acao/pendentes');
+        if (!r || !r.ok) { document.getElementById('lista-planos').innerHTML = '<p class="vazio">Erro ao carregar dados.</p>'; return; }
+        todosItens = Array.isArray(r.dados) ? r.dados : [];
+        atualizarResumo();
+        filtrar();
+    }
+
+    function atualizarResumo() {
+        document.getElementById('cnt-pendente').textContent  = todosItens.filter(function(i){return i.status==='pendente';}).length;
+        document.getElementById('cnt-andamento').textContent = todosItens.filter(function(i){return i.status==='em_andamento';}).length;
+        document.getElementById('cnt-vencido').textContent   = todosItens.filter(function(i){return isVencido(i.prazo)&&i.status!=='concluido';}).length;
+    }
+
+    function filtrar() {
+        var busca  = document.getElementById('filtro-busca').value.toLowerCase();
+        var status = document.getElementById('filtro-status').value;
+        var prazoF = document.getElementById('filtro-vencido').value;
+        var itens = todosItens.filter(function(i) {
+            if (status && i.status !== status) return false;
+            if (prazoF === 'vencido' && !(isVencido(i.prazo) && i.status!=='concluido')) return false;
+            if (prazoF === 'hoje'    && !isHoje(i.prazo))    return false;
+            if (prazoF === 'semana'  && !isSemana(i.prazo))  return false;
+            if (busca) {
+                var txt = ((i.acao||'')+(i.responsavel||'')+(i.codigo||'')+(i.cliente_nome||'')+(i.rec_descricao||'')).toLowerCase();
+                if (txt.indexOf(busca) === -1) return false;
+            }
+            return true;
+        });
+        renderLista(itens);
+    }
+
+    function renderLista(itens) {
+        var el = document.getElementById('lista-planos');
+        if (!itens.length) { el.innerHTML = '<div class="vazio">🎉 Nenhuma ação pendente encontrada.</div>'; return; }
+
+        var grupos = {};
+        itens.forEach(function(i) {
+            if (!grupos[i.reclamacao_id]) grupos[i.reclamacao_id] = { codigo: i.codigo, cliente: i.cliente_nome, desc: i.rec_descricao, itens: [] };
+            grupos[i.reclamacao_id].itens.push(i);
+        });
+
+        var html = '';
+        Object.keys(grupos).forEach(function(recId) {
+            var g = grupos[recId];
+            var rowsHtml = '';
+            g.itens.forEach(function(item) {
+                var iso  = prazoISO(item.prazo);
+                var venc = iso && isVencido(item.prazo) && item.status !== 'concluido';
+                var cls  = 'pa-row status-' + item.status;
+                rowsHtml +=
+                    '<div class="' + cls + '" id="item-' + item.id + '">' +
+
+                    '<div class="pa-col-acao">' +
+                        '<div class="pa-nome">' + (item.acao||'') + '</div>' +
+                        '<span class="pa-obs-label">Observação</span>' +
+                        '<textarea class="pa-obs-area" id="obs-' + item.id + '" placeholder="Adicionar observação ou comentário...">' + (item.observacao||'') + '</textarea>' +
+                    '</div>' +
+
+                    '<div class="pa-col">' +
+                        '<span class="pa-col-label">Responsável</span>' +
+                        '<input type="text" id="resp-' + item.id + '" value="' + (item.responsavel||'') + '" placeholder="Nome..." />' +
+                    '</div>' +
+
+                    '<div class="pa-col">' +
+                        '<span class="pa-col-label">Prazo</span>' +
+                        '<input type="date" id="prazo-' + item.id + '" value="' + iso + '" />' +
+                        (venc ? '<div class="pa-vencida">⚠️ Vencida</div>' : '') +
+                    '</div>' +
+
+                    '<div class="pa-col">' +
+                        '<span class="pa-col-label">Status</span>' +
+                        '<select id="status-' + item.id + '">' +
+                            '<option value="pendente"'      + (item.status==='pendente'    ?' selected':'') + '>🟡 Pendente</option>' +
+                            '<option value="em_andamento"'  + (item.status==='em_andamento'?' selected':'') + '>🔵 Em Andamento</option>' +
+                            '<option value="concluido"'     + (item.status==='concluido'   ?' selected':'') + '>✅ Concluído</option>' +
+                        '</select>' +
+                    '</div>' +
+
+                    '<div class="pa-col">' +
+                        '<span class="pa-col-label">Eficácia</span>' +
+                        '<select id="eficacia-' + item.id + '">' +
+                            '<option value="">— Não avaliada</option>' +
+                            '<option value="eficaz"'     + (item.eficacia==='eficaz'    ?' selected':'') + '>✅ Eficaz</option>' +
+                            '<option value="parcial"'    + (item.eficacia==='parcial'   ?' selected':'') + '>⚠️ Parcial</option>' +
+                            '<option value="nao_eficaz"' + (item.eficacia==='nao_eficaz'?' selected':'') + '>❌ Não eficaz</option>' +
+                        '</select>' +
+                    '</div>' +
+
+                    '<div class="pa-col-salvar">' +
+                        '<button class="btn-salvar" id="btn-' + item.id + '" onclick="salvar(\'' + item.id + '\',\'' + recId + '\')">Salvar</button>' +
+                    '</div>' +
+
+                    '</div>';
+            });
+
+            html +=
+                '<div class="pa-card">' +
+                '<div class="pa-header">' +
+                    '<span style="font-size:16px">📋</span>' +
+                    '<a href="/pages/detalhe-reclamacao.html?id=' + recId + '">' + (g.codigo||'—') + '</a>' +
+                    '<span style="color:#ddd;font-size:16px">|</span>' +
+                    '<span style="font-weight:600;color:#333">' + (g.cliente||'—') + '</span>' +
+                    (g.desc ? '<span style="color:#ddd;font-size:16px">|</span><span style="color:#999;font-size:12px">' + g.desc + '</span>' : '') +
+                    '<span class="tag">' + g.itens.length + ' ação' + (g.itens.length>1?'ões':'') + '</span>' +
+                '</div>' +
+                '<div class="pa-thead"><span>Ação &amp; Observação</span><span>Responsável</span><span>Prazo</span><span>Status</span><span>Eficácia</span><span></span></div>' +
+                '<div>' + rowsHtml + '</div>' +
+                '</div>';
+        });
+
+        el.innerHTML = html;
+    }
+
+    async function salvar(itemId, recId) {
+        var btn = document.getElementById('btn-' + itemId);
+        btn.disabled = true; btn.textContent = '⏳';
+        var r = await api('PATCH', '/reclamacoes/' + recId + '/plano-acao/' + itemId, {
+            status:      document.getElementById('status-'   + itemId).value,
+            eficacia:    document.getElementById('eficacia-' + itemId).value || null,
+            prazo:       document.getElementById('prazo-'    + itemId).value || null,
+            observacao:  document.getElementById('obs-'      + itemId).value.trim() || null,
+            responsavel: document.getElementById('resp-'     + itemId).value.trim() || null,
+        });
+        if (r && r.ok) {
+            btn.textContent = '✅ Salvo'; btn.classList.add('saved');
+            var idx = todosItens.findIndex(function(i){return i.id===itemId;});
+            if (idx >= 0) {
+                todosItens[idx].status     = document.getElementById('status-'   + itemId).value;
+                todosItens[idx].eficacia   = document.getElementById('eficacia-' + itemId).value;
+                todosItens[idx].prazo      = document.getElementById('prazo-'    + itemId).value;
+                todosItens[idx].observacao = document.getElementById('obs-'      + itemId).value.trim();
+            }
+            atualizarResumo();
+            setTimeout(function() {
+                btn.textContent = 'Salvar'; btn.classList.remove('saved'); btn.disabled = false;
+                if (document.getElementById('status-'+itemId) && document.getElementById('status-'+itemId).value === 'concluido') carregar();
+            }, 1500);
+        } else {
+            alert((r && r.dados && r.dados.erro) || 'Erro ao salvar.');
+            btn.disabled = false; btn.textContent = 'Salvar';
+        }
+    }
+
+    carregar();
+</script>
+</body>
+</html>

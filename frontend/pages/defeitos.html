@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Defeitos — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 class="pagina-titulo" style="margin:0;">Defeitos</h2>
+            <button class="btn btn-success" onclick="abrirModal()">+ Novo Defeito</button>
+        </div>
+        <div class="card">
+            <div class="tabela-container">
+                <table>
+                    <thead><tr><th>Código</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody id="tabela-body"><tr><td colspan="4" style="text-align:center;color:#999;">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:460px;">
+        <h3 id="modal-titulo">Novo Defeito</h3>
+        <input type="hidden" id="defeito-id" />
+        <div class="campo"><label>Descrição *</label><input type="text" id="descricao" /></div>
+        <div id="modal-alerta" class="alerta erro"></div>
+        <div class="modal-rodape">
+            <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-success" onclick="salvar()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    async function carregar() {
+        const r = await api('GET', '/defeitos');
+        const tbody = document.getElementById('tabela-body');
+        if (!r.ok || !r.dados.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;">Nenhum defeito cadastrado.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = r.dados.map(d => `
+            <tr style="${!d.ativo ? 'opacity:0.5;' : ''}">
+                <td><span class="badge badge-cinza">${d.codigo || '—'}</span></td>
+                <td><strong>${d.descricao}</strong></td>
+                <td><span class="badge ${d.ativo ? 'badge-verde' : 'badge-vermelho'}">${d.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                <td style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary" onclick="editar('${d.id}','${d.descricao}')">Editar</button>
+                    <button class="btn ${d.ativo ? 'btn-danger' : 'btn-success'}" onclick="alterarStatus('${d.id}','${d.descricao}',${d.ativo})">
+                        ${d.ativo ? 'Inativar' : 'Reativar'}
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function abrirModal() {
+        document.getElementById('modal-titulo').textContent = 'Novo Defeito';
+        document.getElementById('defeito-id').value = '';
+        document.getElementById('descricao').value = '';
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function editar(id, descricao) {
+        document.getElementById('modal-titulo').textContent = 'Editar Defeito';
+        document.getElementById('defeito-id').value = id;
+        document.getElementById('descricao').value = descricao;
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function fecharModal() { document.getElementById('modal').classList.remove('aberto'); }
+
+    async function alterarStatus(id, descricao, ativo) {
+        const acao = ativo ? 'inativar' : 'reativar';
+        if (!confirm(`Deseja ${acao} o defeito "${descricao}"?`)) return;
+        const r = ativo
+            ? await api('DELETE', '/defeitos/' + id)
+            : await api('PUT', '/defeitos/' + id + '/reativar');
+        if (r.ok) carregar();
+        else alert('Erro ao alterar status.');
+    }
+
+    async function salvar() {
+        const id    = document.getElementById('defeito-id').value;
+        const corpo = { descricao: document.getElementById('descricao').value.trim() };
+        const alerta = document.getElementById('modal-alerta');
+        if (!corpo.descricao) { alerta.textContent = 'Descrição é obrigatória.'; alerta.classList.add('visivel'); return; }
+        const r = id ? await api('PUT', '/defeitos/' + id, corpo) : await api('POST', '/defeitos', corpo);
+        if (r.ok) { fecharModal(); carregar(); }
+        else { alerta.textContent = r.dados.erro || 'Erro ao salvar.'; alerta.classList.add('visivel'); }
+    }
+
+    carregar();
+</script>
+</body>
+</html>

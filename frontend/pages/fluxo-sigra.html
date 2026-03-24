@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Fluxo do Processo — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        * { box-sizing: border-box; }
+
+        .fluxo-page { display: flex; gap: 0; height: 100vh; overflow: hidden; }
+
+        /* ── ÁREA DO DIAGRAMA ── */
+        .fluxo-canvas {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            padding: 32px 24px 80px;
+            background: #f4f5f7;
+            position: relative;
+            height: 100%;
+        }
+
+        .fluxo-titulo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 6px;
+        }
+        .fluxo-sub {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 28px;
+        }
+
+        /* ── SWIMLANE ── */
+        .swimlane {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            overflow: visible;
+        }
+        .lane-label {
+            width: 100px;
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            border-radius: 8px 0 0 8px;
+            padding: 12px 6px;
+            text-align: center;
+            line-height: 1.3;
+        }
+        .lane-label .icone { font-size: 20px; margin-bottom: 2px; }
+
+        .lane-sac        { background: #e65100; }
+        .lane-qualidade  { background: #2e7d32; }
+        .lane-comercial  { background: #1565c0; }
+        .lane-expedicao  { background: #546e7a; }
+        .lane-revisao    { background: #6a1b9a; }
+        .lane-pcp        { background: #00695c; }
+        .lane-fiscal     { background: #4527a0; }
+        .lane-financeiro { background: #880e4f; }
+
+        .lane-body {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            padding: 10px 12px;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            flex-wrap: wrap;
+            min-height: 80px;
+            position: relative;
+        }
+
+        /* ── ETAPA (nó do fluxo) ── */
+        .etapa {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            position: relative;
+        }
+
+        .etapa-box {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-align: center;
+            min-width: 110px;
+            max-width: 140px;
+            line-height: 1.35;
+            position: relative;
+            user-select: none;
+        }
+        .etapa-box:hover {
+            border-color: #1565c0;
+            background: #e8f0fe;
+            color: #1565c0;
+            box-shadow: 0 2px 10px rgba(21,101,192,0.15);
+            transform: translateY(-1px);
+        }
+        .etapa-box.ativo {
+            border-color: #1565c0;
+            background: #1565c0;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(21,101,192,0.3);
+        }
+        .etapa-box .etapa-icone {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .etapa-box .etapa-label {
+            display: block;
+            font-size: 11px;
+        }
+
+        /* Cores por setor */
+        .etapa-sac        .etapa-box { border-color: #e65100; }
+        .etapa-sac        .etapa-box:hover, .etapa-sac .etapa-box.ativo { background: #e65100; border-color: #e65100; color: #fff; }
+        .etapa-qualidade  .etapa-box { border-color: #2e7d32; }
+        .etapa-qualidade  .etapa-box:hover, .etapa-qualidade .etapa-box.ativo { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+        .etapa-comercial  .etapa-box { border-color: #1565c0; }
+        .etapa-comercial  .etapa-box:hover, .etapa-comercial .etapa-box.ativo { background: #1565c0; border-color: #1565c0; color: #fff; }
+        .etapa-expedicao  .etapa-box { border-color: #546e7a; }
+        .etapa-expedicao  .etapa-box:hover, .etapa-expedicao .etapa-box.ativo { background: #546e7a; border-color: #546e7a; color: #fff; }
+        .etapa-revisao    .etapa-box { border-color: #6a1b9a; }
+        .etapa-revisao    .etapa-box:hover, .etapa-revisao .etapa-box.ativo { background: #6a1b9a; border-color: #6a1b9a; color: #fff; }
+        .etapa-pcp        .etapa-box { border-color: #00695c; }
+        .etapa-pcp        .etapa-box:hover, .etapa-pcp .etapa-box.ativo { background: #00695c; border-color: #00695c; color: #fff; }
+        .etapa-fiscal     .etapa-box { border-color: #4527a0; }
+        .etapa-fiscal     .etapa-box:hover, .etapa-fiscal .etapa-box.ativo { background: #4527a0; border-color: #4527a0; color: #fff; }
+        .etapa-financeiro .etapa-box { border-color: #880e4f; }
+        .etapa-financeiro .etapa-box:hover, .etapa-financeiro .etapa-box.ativo { background: #880e4f; border-color: #880e4f; color: #fff; }
+
+        /* Seta entre etapas */
+        .seta {
+            display: flex;
+            align-items: center;
+            color: #bdbdbd;
+            font-size: 18px;
+            padding: 0 4px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .seta.decisao { color: #ff9800; font-size: 13px; font-weight: 700; }
+
+        /* Etapa de decisão (losango visual) */
+        .etapa-decisao .etapa-box {
+            background: #fff8e1;
+            border-color: #ff9800;
+            border-style: dashed;
+            color: #e65100;
+        }
+        .etapa-decisao .etapa-box:hover {
+            background: #ff9800;
+            color: #fff;
+        }
+
+        /* Grupo de desvios */
+        .lane-desvios {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .desvio-linha {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+        .desvio-label {
+            font-size: 10px;
+            color: #ff9800;
+            font-weight: 700;
+            white-space: nowrap;
+            margin-right: 4px;
+        }
+
+        /* ── PAINEL LATERAL ── */
+        .painel-detalhe {
+            width: 380px;
+            min-width: 380px;
+            background: #fff;
+            border-left: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.25s;
+            overflow: hidden;
+        }
+        .painel-detalhe.fechado {
+            width: 0;
+            min-width: 0;
+        }
+        .painel-header {
+            padding: 20px 20px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .painel-header-icone {
+            font-size: 28px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .painel-header-titulo {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.3;
+        }
+        .painel-header-setor {
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .painel-fechar {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #aaa;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .painel-fechar:hover { color: #333; }
+
+        .painel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .painel-secao {
+            margin-bottom: 20px;
+        }
+        .painel-secao-titulo {
+            font-size: 10px;
+            font-weight: 700;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .painel-secao-titulo::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #f0f0f0;
+        }
+        .painel-texto {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.65;
+        }
+        .painel-lista {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .painel-lista li {
+            font-size: 13px;
+            color: #444;
+            padding: 5px 0;
+            border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.5;
+        }
+        .painel-lista li:last-child { border-bottom: none; }
+        .painel-lista li::before {
+            content: '•';
+            color: #1565c0;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .tag-obrigatorio {
+            background: #ffebee;
+            color: #c62828;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+        .tag-opcional {
+            background: #f5f5f5;
+            color: #888;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+
+        .proximo-box {
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #2e7d32;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+        .proximo-box.multi {
+            background: #fff8e1;
+            border-color: #ffcc80;
+            color: #e65100;
+        }
+
+        .placeholder-painel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #ccc;
+            text-align: center;
+            padding: 24px;
+        }
+        .placeholder-painel .big { font-size: 48px; margin-bottom: 12px; }
+        .placeholder-painel p { font-size: 13px; line-height: 1.6; }
+
+
+        /* ── SEPARADOR DE FASE ── */
+        .fase-titulo {
+            font-size: 10px;
+            font-weight: 700;
+            color: #bbb;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px 0 8px 108px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fase-titulo::before, .fase-titulo::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e8e8e8;
+        }
+
+        /* Override do layout padrão do SIGRA para esta página */
+        body, html { height: 100%; overflow: hidden; }
+
+        /* ── IMPRESSÃO BPM ── */
+
+
+        /* Estilos do BPM para impressão */
+        .bpm-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #1a237e;
+        }
+        .bpm-header h1 { font-size: 16px; color: #1a237e; margin: 0 0 4px; }
+        .bpm-header p  { font-size: 10px; color: #888; margin: 0; }
+
+        .bpm-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .bpm-table th, .bpm-table td {
+            border: 1px solid #ccc;
+            vertical-align: top;
+            padding: 0;
+        }
+        /* Coluna de raia (setor) */
+        .bpm-raia-label {
+            width: 72px;
+            background: #1a237e;
+            color: #fff;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 4px;
+            vertical-align: middle;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            line-height: 1.3;
+        }
+        .raia-sac        .bpm-raia-label { background: #e65100; }
+        .raia-qualidade  .bpm-raia-label { background: #2e7d32; }
+        .raia-comercial  .bpm-raia-label { background: #1565c0; }
+        .raia-expedicao  .bpm-raia-label { background: #546e7a; }
+        .raia-revisao    .bpm-raia-label { background: #6a1b9a; }
+        .raia-pcp        .bpm-raia-label { background: #00695c; }
+        .raia-fiscal     .bpm-raia-label { background: #4527a0; }
+        .raia-financeiro .bpm-raia-label { background: #880e4f; }
+
+        .bpm-raia-body {
+            padding: 8px 6px;
+            background: #fff;
+            min-height: 60px;
+            vertical-align: middle;
+        }
+        .raia-sac        .bpm-raia-body { background: #fff8f5; }
+        .raia-qualidade  .bpm-raia-body { background: #f5fff6; }
+        .raia-comercial  .bpm-raia-body { background: #f5f8ff; }
+        .raia-expedicao  .bpm-raia-body { background: #f7f8f9; }
+        .raia-revisao    .bpm-raia-body { background: #fdf5ff; }
+        .raia-pcp        .bpm-raia-body { background: #f5fffd; }
+        .raia-fiscal     .bpm-raia-body { background: #f8f5ff; }
+        .raia-financeiro .bpm-raia-body { background: #fff5f9; }
+
+        .bpm-fase-header td {
+            background: #e8eaf6;
+            color: #1a237e;
+            font-weight: 700;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 5px 8px;
+            border-bottom: 2px solid #1a237e;
+        }
+
+        /* Nós do processo */
+        .bpm-nos {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .bpm-no {
+            border: 1.5px solid #999;
+            border-radius: 5px;
+            padding: 5px 7px;
+            font-size: 9.5px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 70px;
+            max-width: 100px;
+            line-height: 1.3;
+            background: #fff;
+            page-break-inside: avoid;
+        }
+        .bpm-no .bpm-icone { font-size: 13px; display: block; margin-bottom: 2px; }
+        .bpm-no.decisao {
+            border-style: dashed;
+            border-color: #ff9800;
+            background: #fff8e1;
+            color: #e65100;
+            border-radius: 0;
+            transform: rotate(0deg);
+        }
+        .bpm-no.fim {
+            border-color: #2e7d32;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 50px;
+        }
+        .bpm-seta { font-size: 13px; color: #999; flex-shrink: 0; }
+        .bpm-seta-desvio {
+            font-size: 8.5px;
+            color: #ff9800;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .bpm-col-desvios { display: flex; flex-direction: column; gap: 4px; margin-left: 4px; }
+        .bpm-desvio-linha { display: flex; align-items: center; gap: 3px; }
+        .bpm-ref { font-size: 9px; color: #1565c0; font-style: italic; }
+    </style>
+</head>
+<body>
+<div id="sidebar-container"></div>
+<div class="fluxo-page" id="fluxo-page" style="margin-left:240px">
+
+        <!-- DIAGRAMA -->
+        <div class="fluxo-canvas" id="fluxo-canvas">
+            <div class="fluxo-titulo">📋 Fluxo do Processo — SIGRA</div>
+            <div class="fluxo-sub">Clique em qualquer etapa para ver os detalhes, campos obrigatórios e próximos passos.</div>
+
+            <!-- ══ FASE 1: CADASTRO ══ -->
+            <div class="fase-titulo">Fase 1 — Cadastro</div>
+            <div class="swimlane">
+                <div class="lane-label lane-sac"><span class="icone">🎧</span>SAC</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('cadastro')">
+                        <div class="etapa-box" id="et-cadastro">
+                            <span class="etapa-icone">📝</span>
+                            <span class="etapa-label">Cadastrar Reclamação</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('rascunho')">
+                        <div class="etapa-box" id="et-rascunho">
+                            <span class="etapa-icone">✏️</span>
+                            <span class="etapa-label">Revisar Rascunho</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('enviar_qualidade')">
+                        <div class="etapa-box" id="et-enviar_qualidade">
+                            <span class="etapa-icone">📤</span>
+                            <span class="etapa-label">Enviar para Qualidade</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ FASE 2: ANÁLISE ══ -->
+            <div class="fase-titulo">Fase 2 — Análise da Qualidade</div>
+            <div class="swimlane">
+                <div class="lane-label lane-qualidade"><span class="icone">🔬</span>Qualidade</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-qualidade" onclick="abrirDetalhe('avaliacao')">
+                        <div class="etapa-box" id="et-avaliacao">
+                            <span class="etapa-icone">🔬</span>
+                            <span class="etapa-label">Avaliar Reclamação</span>
+                        </div>
+                    </div>
+                    <div class="seta decisao">→</div>
+                    <div class="etapa etapa-decisao etapa-qualidade" onclick="abrirDetalhe('decisao_analise')">
+                        <div class="etapa-box" id="et-decisao_analise">
+                            <span class="etapa-icone">🔀</span>
+                            <span class="etapa-label">Resultado?</span>
+                        </div>
+                    </div>
+                    <div class="lane-desvios" style="margin-left:8px">
+                        <div class="desvio-linha">
+                            <span class="desvio-label">✅ Procedente →</span>
+                            <div class="etapa etapa-qualidade" onclick="abrirDetalhe('plano_acao_analise')">
+                                <div class="etapa-box" id="et-plano_acao_analise">
+                                    <span class="etapa-icone">📋</span>
+                                    <span class="etapa-label">Plano de Ação</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">❌ Improcedente →</span>
+                            <div class="etapa etapa-comercial" onclick="abrirDetalhe('comercial_improcedente')">
+                                <div class="etapa-box" id="et-comercial_improcedente">
+                                    <span class="etapa-icone">💼</span>
+                                    <span class="etapa-label">Comercial decide</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">🔍 Visita →</span>
+                            <div class="etapa etapa-qualidade" onclick="abrirDetalhe('visita')">
+                                <div class="etapa-box" id="et-visita">
+                                    <span class="etapa-icone">🚗</span>
+                                    <span class="etapa-label">Visita Técnica</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ FASE 2B: PÓS-VISITA ══ -->
+            <div class="fase-titulo">Fase 2B — Pós-Visita Técnica (quando aplicável)</div>
+            <div class="swimlane">
+                <div class="lane-label lane-qualidade"><span class="icone">🔬</span>Qualidade</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-qualidade" onclick="abrirDetalhe('pos_visita')">
+                        <div class="etapa-box" id="et-pos_visita">
+                            <span class="etapa-icone">🔬</span>
+                            <span class="etapa-label">2ª Avaliação Pós-Visita</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <span style="font-size:12px;color:#888;font-style:italic">Mesmo fluxo da 1ª avaliação</span>
+                </div>
+            </div>
+
+            <!-- ══ FASE 3: DIRECIONAMENTO ══ -->
+            <div class="fase-titulo">Fase 3 — Direcionamento Comercial</div>
+            <div class="swimlane">
+                <div class="lane-label lane-comercial"><span class="icone">💼</span>Comercial</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-comercial" onclick="abrirDetalhe('direcionamento')">
+                        <div class="etapa-box" id="et-direcionamento">
+                            <span class="etapa-icone">🔀</span>
+                            <span class="etapa-label">Direcionamento</span>
+                        </div>
+                    </div>
+                    <div class="lane-desvios" style="margin-left:8px">
+                        <div class="desvio-linha">
+                            <span class="desvio-label">📦 Devolução →</span>
+                            <span style="font-size:12px;color:#1565c0;font-weight:600">Fase 4A</span>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">💰 Crédito →</span>
+                            <span style="font-size:12px;color:#1565c0;font-weight:600">Fase 4B</span>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">✅ Encerrar →</span>
+                            <span style="font-size:12px;color:#1565c0;font-weight:600">Fase 5</span>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">🔍 Visita →</span>
+                            <span style="font-size:12px;color:#1565c0;font-weight:600">Fase 2B</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ FASE 4A: DEVOLUÇÃO ══ -->
+            <div class="fase-titulo">Fase 4A — Fluxo de Devolução</div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-sac"><span class="icone">🎧</span>SAC</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('dev_cotacao')">
+                        <div class="etapa-box" id="et-dev_cotacao">
+                            <span class="etapa-icone">🚚</span>
+                            <span class="etapa-label">Confirmar Qtd e Cotar Frete</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('dev_nf_cliente')">
+                        <div class="etapa-box" id="et-dev_nf_cliente">
+                            <span class="etapa-icone">📄</span>
+                            <span class="etapa-label">Receber NF do Cliente</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-fiscal"><span class="icone">📄</span>Fiscal</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-fiscal" onclick="abrirDetalhe('dev_conf_nf')">
+                        <div class="etapa-box" id="et-dev_conf_nf">
+                            <span class="etapa-icone">🔍</span>
+                            <span class="etapa-label">Conferir NF do Cliente</span>
+                        </div>
+                    </div>
+                    <div class="lane-desvios" style="margin-left:8px">
+                        <div class="desvio-linha">
+                            <span class="desvio-label">✅ OK →</span>
+                            <span style="font-size:12px;color:#2e7d32;font-weight:600">SAC solicita coleta</span>
+                        </div>
+                        <div class="desvio-linha">
+                            <span class="desvio-label">❌ Problema →</span>
+                            <span style="font-size:12px;color:#c62828;font-weight:600">SAC corrige NF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-sac"><span class="icone">🎧</span>SAC</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('dev_coleta')">
+                        <div class="etapa-box" id="et-dev_coleta">
+                            <span class="etapa-icone">🚛</span>
+                            <span class="etapa-label">Solicitar Coleta</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-expedicao"><span class="icone">📦</span>Expedição</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-expedicao" onclick="abrirDetalhe('dev_recebimento')">
+                        <div class="etapa-box" id="et-dev_recebimento">
+                            <span class="etapa-icone">📥</span>
+                            <span class="etapa-label">Receber Material</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-revisao"><span class="icone">🧵</span>Revisão</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-revisao" onclick="abrirDetalhe('dev_revisao')">
+                        <div class="etapa-box" id="et-dev_revisao">
+                            <span class="etapa-icone">🔄</span>
+                            <span class="etapa-label">Revisar Material</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-pcp"><span class="icone">⚙️</span>PCP</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-pcp" onclick="abrirDetalhe('dev_of')">
+                        <div class="etapa-box" id="et-dev_of">
+                            <span class="etapa-icone">📋</span>
+                            <span class="etapa-label">Emitir OF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-fiscal"><span class="icone">📄</span>Fiscal</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-fiscal" onclick="abrirDetalhe('dev_conf_material')">
+                        <div class="etapa-box" id="et-dev_conf_material">
+                            <span class="etapa-icone">✅</span>
+                            <span class="etapa-label">Conferir Material Revisado</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <span style="font-size:12px;color:#888;font-style:italic">→ Fase 5 (Encerramento)</span>
+                </div>
+            </div>
+
+            <!-- ══ FASE 4B: CRÉDITO ══ -->
+            <div class="fase-titulo">Fase 4B — Fluxo de Crédito</div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-sac"><span class="icone">🎧</span>SAC</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('cred_nf')">
+                        <div class="etapa-box" id="et-cred_nf">
+                            <span class="etapa-icone">📄</span>
+                            <span class="etapa-label">Solicitar NF ao Cliente</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-fiscal"><span class="icone">📄</span>Fiscal</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-fiscal" onclick="abrirDetalhe('cred_fiscal')">
+                        <div class="etapa-box" id="et-cred_fiscal">
+                            <span class="etapa-icone">🔍</span>
+                            <span class="etapa-label">Validar NF e Informar Valor</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-sac"><span class="icone">🎧</span>SAC</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-sac" onclick="abrirDetalhe('cred_forma')">
+                        <div class="etapa-box" id="et-cred_forma">
+                            <span class="etapa-icone">💳</span>
+                            <span class="etapa-label">Definir Forma com Cliente</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swimlane">
+                <div class="lane-label lane-financeiro"><span class="icone">💰</span>Financeiro</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-financeiro" onclick="abrirDetalhe('cred_financeiro')">
+                        <div class="etapa-box" id="et-cred_financeiro">
+                            <span class="etapa-icone">💰</span>
+                            <span class="etapa-label">Executar Crédito</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <span style="font-size:12px;color:#888;font-style:italic">→ Fase 5 (Encerramento)</span>
+                </div>
+            </div>
+
+            <!-- ══ FASE 5: ENCERRAMENTO ══ -->
+            <div class="fase-titulo">Fase 5 — Encerramento</div>
+            <div class="swimlane">
+                <div class="lane-label lane-comercial"><span class="icone">💼</span>Comercial</div>
+                <div class="lane-body">
+                    <div class="etapa etapa-comercial" onclick="abrirDetalhe('encerramento')">
+                        <div class="etapa-box" id="et-encerramento">
+                            <span class="etapa-icone">✅</span>
+                            <span class="etapa-label">Encerrar Reclamação</span>
+                        </div>
+                    </div>
+                    <div class="seta">→</div>
+                    <div class="etapa" onclick="abrirDetalhe('concluida')">
+                        <div class="etapa-box" id="et-concluida" style="border-color:#2e7d32;background:#e8f5e9;color:#2e7d32">
+                            <span class="etapa-icone">🎉</span>
+                            <span class="etapa-label">Concluída</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── PAINEL LATERAL ── -->
+        <div class="painel-detalhe fechado" id="painel-detalhe">
+            <div id="painel-conteudo">
+                <div class="placeholder-painel">
+                    <div class="big">👆</div>
+                    <p>Clique em uma etapa no diagrama para ver os detalhes, campos e próximos passos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+carregarSidebar();
+
+const ETAPAS = {
+    cadastro: {
+        icone: '📝', titulo: 'Cadastrar Reclamação', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'O SAC recebe a reclamação do cliente e registra no sistema com todos os dados iniciais.',
+        campos: [
+            { label: 'Cliente', obrigatorio: true },
+            { label: 'Descrição do problema', obrigatorio: true },
+            { label: 'Nossa NF', obrigatorio: false },
+            { label: 'Lote', obrigatorio: false },
+            { label: 'Metragem', obrigatorio: false },
+            { label: 'Artigo', obrigatorio: false },
+            { label: 'Nº RNC do Cliente', obrigatorio: false },
+            { label: 'Fotos / vídeos / PDFs', obrigatorio: false },
+        ],
+        proximo: 'Rascunho salvo — SAC pode complementar antes de enviar para Qualidade.',
+        obs: 'A reclamação pode ser salva como rascunho e complementada depois. Só avança quando o SAC clicar em "Enviar para Qualidade".'
+    },
+    rascunho: {
+        icone: '✏️', titulo: 'Revisar Rascunho', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'Antes de enviar, o SAC pode complementar dados, adicionar ou remover arquivos e corrigir informações.',
+        campos: [
+            { label: 'Todos os campos do cadastro (editáveis)', obrigatorio: false },
+            { label: 'Arquivos adicionais', obrigatorio: false },
+        ],
+        proximo: 'Clicar em "Enviar para Qualidade" avança para a análise.',
+        obs: 'Enquanto em rascunho, somente SAC e Admin enxergam a reclamação.'
+    },
+    enviar_qualidade: {
+        icone: '📤', titulo: 'Enviar para Qualidade', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'O SAC confirma o envio e a reclamação entra na fila da Qualidade para análise.',
+        campos: [],
+        proximo: 'Status muda para "Ag. Qualidade". A Qualidade recebe notificação de pendência.',
+        obs: 'Ação irreversível — após enviar, o SAC não pode mais editar os dados do cadastro.'
+    },
+    avaliacao: {
+        icone: '🔬', titulo: 'Avaliação da Qualidade', setor: 'Qualidade', corSetor: '#2e7d32',
+        descricao: 'A Qualidade analisa a reclamação, identifica causa raiz e classifica o resultado.',
+        campos: [
+            { label: 'Resultado (Procedente / Improcedente / Visita Técnica)', obrigatorio: true },
+            { label: 'Observações da análise', obrigatorio: false },
+            { label: 'Causa raiz', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+            { label: 'Plano de ação (ações, responsáveis, prazos)', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+            { label: 'Áreas envolvidas', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+            { label: 'Defeitos identificados', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+            { label: 'Fotos da análise', obrigatorio: false },
+        ],
+        proximo: 'Procedente → Comercial direciona solução\nImprocedente → Comercial decide encaminhamento\nVisita Técnica → Qualidade agenda visita',
+        obs: 'É possível salvar rascunho e continuar a análise depois. Apenas Qualidade e Admin podem concluir.'
+    },
+    decisao_analise: {
+        icone: '🔀', titulo: 'Decisão após Análise', setor: 'Qualidade', corSetor: '#2e7d32',
+        descricao: 'Com base na análise, a reclamação segue um de três caminhos:',
+        campos: [],
+        proximo: '✅ Procedente → Comercial direciona a solução (devolução, crédito ou encerramento)\n❌ Improcedente → Comercial avalia encaminhamento estratégico\n🔍 Requer Visita → Qualidade realiza visita técnica no cliente',
+        obs: 'Se improcedente, o Comercial ainda pode optar por oferecer uma solução ao cliente como decisão estratégica.'
+    },
+    plano_acao_analise: {
+        icone: '📋', titulo: 'Plano de Ação (Análise)', setor: 'Qualidade', corSetor: '#2e7d32',
+        descricao: 'Quando a reclamação é procedente, a Qualidade registra o plano de ação para evitar reincidência.',
+        campos: [
+            { label: 'Descrição da ação', obrigatorio: true },
+            { label: 'Responsável pela ação', obrigatorio: false },
+            { label: 'Prazo', obrigatorio: false },
+            { label: 'Status (Pendente / Em andamento / Concluído)', obrigatorio: false },
+            { label: 'Eficácia (Eficaz / Parcial / Não eficaz)', obrigatorio: false },
+        ],
+        proximo: 'O plano fica vinculado à reclamação e pode ser acompanhado na tela "Planos de Ação".',
+        obs: 'O plano pode ser preenchido durante a análise ou complementado depois via timeline da reclamação.'
+    },
+    visita: {
+        icone: '🚗', titulo: 'Visita Técnica', setor: 'Qualidade', corSetor: '#2e7d32',
+        descricao: 'A Qualidade realiza visita ao cliente para coleta de informações in loco.',
+        campos: [
+            { label: 'Data da visita', obrigatorio: true },
+            { label: 'Hora', obrigatorio: false },
+            { label: 'Responsável do cliente', obrigatorio: false },
+            { label: 'Observações / relato da visita', obrigatorio: false },
+            { label: 'Fotos da visita', obrigatorio: false },
+        ],
+        proximo: 'Após concluir a visita, a Qualidade realiza a 2ª avaliação (Pós-Visita).',
+        obs: 'A visita pode ser solicitada pela Qualidade na 1ª análise ou pelo Comercial no direcionamento.'
+    },
+    pos_visita: {
+        icone: '🔬', titulo: '2ª Avaliação — Pós-Visita', setor: 'Qualidade', corSetor: '#2e7d32',
+        descricao: 'Com os dados coletados na visita, a Qualidade reavalia a reclamação e emite o resultado definitivo.',
+        campos: [
+            { label: 'Resultado (Procedente / Improcedente)', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+            { label: 'Causa raiz', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+            { label: 'Plano de ação', obrigatorio: false, detalhe: 'Obrigatório se procedente' },
+        ],
+        proximo: 'Mesmo fluxo da 1ª avaliação — vai para Comercial decidir o direcionamento.',
+        obs: 'O resultado da pós-visita substitui o da visita técnica como parecer definitivo da Qualidade.'
+    },
+    comercial_improcedente: {
+        icone: '💼', titulo: 'Comercial — Reclamação Improcedente', setor: 'Comercial', corSetor: '#1565c0',
+        descricao: 'Mesmo com o parecer improcedente da Qualidade, o Comercial pode decidir oferecer uma solução ao cliente por decisão estratégica.',
+        campos: [
+            { label: 'Decisão (Devolução / Crédito / Encerramento direto)', obrigatorio: true },
+            { label: 'Observações / justificativa', obrigatorio: false },
+        ],
+        proximo: 'Devolução → Fase 4A\nCrédito → Fase 4B\nEncerramento → Fase 5',
+        obs: 'Esta etapa aparece com o resultado da Qualidade claramente indicado para orientar a decisão do Comercial.'
+    },
+    direcionamento: {
+        icone: '🔀', titulo: 'Direcionamento Comercial', setor: 'Comercial', corSetor: '#1565c0',
+        descricao: 'O Comercial recebe o parecer da Qualidade (procedente) e decide qual solução oferecer ao cliente.',
+        campos: [
+            { label: 'Solução escolhida', obrigatorio: true, detalhe: 'Devolução / Crédito / Encerramento / Solicitar Visita' },
+            { label: 'Observações / justificativa', obrigatorio: false },
+        ],
+        proximo: '📦 Devolução → Fase 4A — SAC confirma quantidades e cota fretes\n💰 Crédito → Fase 4B — SAC solicita NF ao cliente\n✅ Encerramento → Fase 5 — Comercial encerra diretamente\n🔍 Visita → Fase 2B — Qualidade realiza visita técnica',
+        obs: 'Se a visita já tiver sido realizada, a opção "Solicitar Visita" não aparece.'
+    },
+    dev_cotacao: {
+        icone: '🚚', titulo: 'Confirmar Quantidade e Cotar Frete', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'O SAC confirma a quantidade de metros a ser devolvida, coleta cotações de frete e escolhe a transportadora.',
+        campos: [
+            { label: 'Quantidade confirmada (metros)', obrigatorio: true },
+            { label: 'Cotações de frete (mínimo recomendado: 3)', obrigatorio: true },
+            { label: 'Transportadora escolhida', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Ao confirmar, o cliente é notificado e o SAC aguarda a NF do cliente.',
+        obs: 'As cotações ficam registradas no sistema e podem ser consultadas na timeline da reclamação.'
+    },
+    dev_nf_cliente: {
+        icone: '📄', titulo: 'Receber NF do Cliente', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'O SAC solicita e anexa a Nota Fiscal do cliente para que o Fiscal possa conferir.',
+        campos: [
+            { label: 'Upload da NF do cliente (PDF ou imagem)', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'NF enviada → Fiscal confere a NF.',
+        obs: 'Se a NF for reprovada pelo Fiscal, o SAC precisará anexar uma versão corrigida.'
+    },
+    dev_conf_nf: {
+        icone: '🔍', titulo: 'Conferência da NF (Fiscal)', setor: 'Fiscal', corSetor: '#4527a0',
+        descricao: 'O Fiscal verifica se a Nota Fiscal do cliente está correta para processar a devolução.',
+        campos: [
+            { label: 'NF está OK?', obrigatorio: true, detalhe: 'Sim / Não' },
+            { label: 'Descrição do problema (se reprovada)', obrigatorio: false, detalhe: 'Obrigatório se NF reprovada' },
+        ],
+        proximo: '✅ NF OK → SAC solicita a coleta\n❌ NF com problema → SAC corrige e reenvia',
+        obs: 'O link da NF anexada pelo SAC fica disponível para o Fiscal visualizar antes de decidir.'
+    },
+    dev_coleta: {
+        icone: '🚛', titulo: 'Solicitar Coleta', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'Com a NF aprovada, o SAC formaliza a solicitação de coleta do material no cliente.',
+        campos: [
+            { label: 'Transportadora', obrigatorio: true },
+            { label: 'NF de coleta', obrigatorio: false },
+            { label: 'Data da coleta', obrigatorio: true },
+            { label: 'Data prevista de chegada', obrigatorio: false },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Coleta confirmada → Expedição recebe o material.',
+        obs: 'A transportadora é pré-preenchida com a escolhida na cotação, mas pode ser alterada.'
+    },
+    dev_recebimento: {
+        icone: '📥', titulo: 'Receber Material', setor: 'Expedição', corSetor: '#546e7a',
+        descricao: 'A Expedição confirma o recebimento físico do material devolvido pelo cliente.',
+        campos: [
+            { label: 'Confirmação de recebimento', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Material recebido → Revisão analisa e revisa o material.',
+        obs: 'O sistema registra data e hora do recebimento automaticamente.'
+    },
+    dev_revisao: {
+        icone: '🔄', titulo: 'Revisar Material', setor: 'Revisão', corSetor: '#6a1b9a',
+        descricao: 'A Revisão analisa o material devolvido, confere qualidade e registra o romaneio.',
+        campos: [
+            { label: 'Revisora responsável', obrigatorio: true },
+            { label: 'Itens do romaneio (código, qualidade, metros)', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Revisão concluída → PCP emite a Ordem de Fabricação.',
+        obs: 'O romaneio registra item a item o material revisado, com classificação de qualidade (1ª, 2ª, 3ª).'
+    },
+    dev_of: {
+        icone: '📋', titulo: 'Emitir OF (Ordem de Fabricação)', setor: 'PCP', corSetor: '#00695c',
+        descricao: 'O PCP emite a Ordem de Fabricação com base no romaneio da revisão.',
+        campos: [
+            { label: 'Número da OF', obrigatorio: true },
+        ],
+        proximo: 'OF emitida → Fiscal confere o material revisado.',
+        obs: 'A OF é o documento interno que formaliza o reprocessamento do material.'
+    },
+    dev_conf_material: {
+        icone: '✅', titulo: 'Conferência do Material Revisado', setor: 'Fiscal', corSetor: '#4527a0',
+        descricao: 'O Fiscal confere se o material revisado está de acordo com a OF e aprova o encerramento.',
+        campos: [
+            { label: 'Material está OK?', obrigatorio: true, detalhe: 'Aprovado / Reprovado' },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Material aprovado → Comercial encerra a reclamação (Fase 5).',
+        obs: 'Esta é a última etapa operacional do fluxo de devolução antes do encerramento.'
+    },
+    cred_nf: {
+        icone: '📄', titulo: 'Solicitar NF ao Cliente (Crédito)', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'O SAC solicita ao cliente a Nota Fiscal necessária para o Fiscal calcular o valor do crédito.',
+        campos: [
+            { label: 'Upload da NF do cliente (PDF ou imagem)', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'NF enviada → Fiscal valida e informa o valor do crédito.',
+        obs: 'Diferente da devolução, aqui não há conferência separada — o Fiscal valida e já informa o valor.'
+    },
+    cred_fiscal: {
+        icone: '🔍', titulo: 'Validar NF e Informar Valor', setor: 'Fiscal', corSetor: '#4527a0',
+        descricao: 'O Fiscal verifica a NF do cliente e calcula o valor do crédito a ser gerado.',
+        campos: [
+            { label: 'NF está OK?', obrigatorio: true, detalhe: 'Aprovada / Reprovada' },
+            { label: 'Valor do crédito (R$)', obrigatorio: false, detalhe: 'Obrigatório se aprovada' },
+            { label: 'Observações', obrigatorio: false },
+            { label: 'Motivo da reprovação', obrigatorio: false, detalhe: 'Obrigatório se reprovada' },
+        ],
+        proximo: '✅ Aprovada → SAC define a forma de crédito com o cliente\n❌ Reprovada → SAC complementa informações',
+        obs: 'Se reprovada, o SAC recebe notificação para complementar com as informações corretas.'
+    },
+    cred_forma: {
+        icone: '💳', titulo: 'Definir Forma de Crédito com o Cliente', setor: 'SAC', corSetor: '#e65100',
+        descricao: 'Com o valor aprovado pelo Fiscal, o SAC alinha com o cliente qual será a forma de geração do crédito.',
+        campos: [
+            { label: 'Forma de crédito', obrigatorio: true, detalhe: 'Cancelar boleto / Abater em outro boleto / Outros' },
+            { label: 'Contato realizado com (nome)', obrigatorio: false },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Forma definida → Financeiro executa o crédito.',
+        obs: 'O valor do crédito já está fixado pelo Fiscal — o SAC só define a modalidade com o cliente.'
+    },
+    cred_financeiro: {
+        icone: '💰', titulo: 'Executar Crédito (Financeiro)', setor: 'Financeiro', corSetor: '#880e4f',
+        descricao: 'O Financeiro toma ciência do crédito aprovado e executa conforme a forma definida pelo SAC.',
+        campos: [
+            { label: 'Confirmação de ciência', obrigatorio: true },
+            { label: 'Observações', obrigatorio: false },
+        ],
+        proximo: 'Crédito executado → Comercial encerra a reclamação (Fase 5).',
+        obs: 'O Financeiro executa o crédito no sistema financeiro externo — o SIGRA registra apenas a confirmação.'
+    },
+    encerramento: {
+        icone: '✅', titulo: 'Encerrar Reclamação', setor: 'Comercial', corSetor: '#1565c0',
+        descricao: 'O Comercial faz o encerramento formal da reclamação, confirmando que tudo foi resolvido com o cliente.',
+        campos: [
+            { label: 'Descrição do encerramento / observações finais', obrigatorio: false },
+        ],
+        proximo: 'Reclamação encerrada → Status "Concluída". Aparece nos relatórios.',
+        obs: 'O encerramento pode ser feito após qualquer solução (devolução, crédito ou encerramento direto).'
+    },
+    concluida: {
+        icone: '🎉', titulo: 'Reclamação Concluída', setor: 'Sistema', corSetor: '#2e7d32',
+        descricao: 'A reclamação foi totalmente processada e encerrada. Todos os dados ficam registrados para consulta histórica.',
+        campos: [],
+        proximo: 'Nenhuma ação necessária. A reclamação pode ser consultada a qualquer momento.',
+        obs: 'O plano de ação vinculado continua disponível na tela "Planos de Ação" até que todas as ações sejam concluídas e avaliadas.'
+    },
+};
+
+let etapaAtiva = null;
+
+function abrirDetalhe(id) {
+    const dados = ETAPAS[id];
+    if (!dados) return;
+
+    // Desmarcar anterior
+    if (etapaAtiva) {
+        const el = document.getElementById('et-' + etapaAtiva);
+        if (el) el.classList.remove('ativo');
+    }
+    etapaAtiva = id;
+    const el = document.getElementById('et-' + id);
+    if (el) el.classList.add('ativo');
+
+    // Montar campos
+    const camposHtml = dados.campos.length ? `
+        <div class="painel-secao">
+            <div class="painel-secao-titulo">📝 Campos</div>
+            <ul class="painel-lista">
+                ${dados.campos.map(c => `
+                    <li>
+                        ${c.label}
+                        ${c.obrigatorio ? '<span class="tag-obrigatorio">obrigatório</span>' : '<span class="tag-opcional">opcional</span>'}
+                        ${c.detalhe ? `<span style="color:#999;font-size:11px;display:block;margin-top:2px">${c.detalhe}</span>` : ''}
+                    </li>
+                `).join('')}
+            </ul>
+        </div>` : '';
+
+    // Próximo passo
+    const linhasProximo = dados.proximo.split('\n');
+    const proximoHtml = `
+        <div class="painel-secao">
+            <div class="painel-secao-titulo">➡️ Próximo Passo</div>
+            <div class="proximo-box ${linhasProximo.length > 1 ? 'multi' : ''}">
+                ${linhasProximo.map(l => `<div>${l}</div>`).join('')}
+            </div>
+        </div>`;
+
+    const obsHtml = dados.obs ? `
+        <div class="painel-secao">
+            <div class="painel-secao-titulo">💡 Observações</div>
+            <div class="painel-texto">${dados.obs}</div>
+        </div>` : '';
+
+    document.getElementById('painel-conteudo').innerHTML = `
+        <div class="painel-header">
+            <div class="painel-header-icone">${dados.icone}</div>
+            <div>
+                <div class="painel-header-titulo">${dados.titulo}</div>
+                <span class="painel-header-setor" style="background:${dados.corSetor}">${dados.setor}</span>
+            </div>
+            <button class="painel-fechar" onclick="fecharPainel()">✕</button>
+        </div>
+        <div class="painel-body">
+            <div class="painel-secao">
+                <div class="painel-secao-titulo">📌 O que é esta etapa</div>
+                <div class="painel-texto">${dados.descricao}</div>
+            </div>
+            ${camposHtml}
+            ${proximoHtml}
+            ${obsHtml}
+        </div>
+    `;
+
+    document.getElementById('painel-detalhe').classList.remove('fechado');
+}
+
+function fecharPainel() {
+    document.getElementById('painel-detalhe').classList.add('fechado');
+    if (etapaAtiva) {
+        const el = document.getElementById('et-' + etapaAtiva);
+        if (el) el.classList.remove('ativo');
+        etapaAtiva = null;
+    }
+}
+</script>
+</body>
+</html>

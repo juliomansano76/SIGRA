@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGRA — Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .cards-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+            border-top: 4px solid #1a237e;
+        }
+        .stat-card.verde    { border-top-color: #2e7d32; }
+        .stat-card.laranja  { border-top-color: #e65100; }
+        .stat-card.roxo     { border-top-color: #6a1b9a; }
+        .stat-card.azul     { border-top-color: #0277bd; }
+        .stat-card.cinza    { border-top-color: #546e7a; }
+        .stat-card.vermelho { border-top-color: #c62828; }
+        .stat-numero {
+            font-size: 38px;
+            font-weight: 700;
+            color: #1a237e;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .stat-card.verde    .stat-numero { color: #2e7d32; }
+        .stat-card.laranja  .stat-numero { color: #e65100; }
+        .stat-card.roxo     .stat-numero { color: #6a1b9a; }
+        .stat-card.azul     .stat-numero { color: #0277bd; }
+        .stat-card.cinza    .stat-numero { color: #546e7a; }
+        .stat-card.vermelho .stat-numero { color: #c62828; }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+        .stat-sublabel {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+        .secao-titulo-dash {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a237e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 24px 0 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <div id="sidebar-container"></div>
+
+    <div class="conteudo">
+        <h2 class="pagina-titulo">Dashboard</h2>
+
+        <!-- Linha 1: Visão geral -->
+        <div class="secao-titulo-dash">Visão Geral</div>
+        <div class="cards-stats">
+            <div class="stat-card">
+                <div class="stat-numero" id="stat-abertas">—</div>
+                <div class="stat-label">Reclamações Abertas</div>
+            </div>
+            <div class="stat-card laranja">
+                <div class="stat-numero" id="stat-pendencias">—</div>
+                <div class="stat-label">Minhas Pendências</div>
+            </div>
+            <div class="stat-card verde">
+                <div class="stat-numero" id="stat-concluidas">—</div>
+                <div class="stat-label">Concluídas</div>
+            </div>
+        </div>
+
+        <!-- Linha 2: Por mês -->
+        <div class="secao-titulo-dash">Por Mês</div>
+        <div class="cards-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="stat-card azul">
+                <div class="stat-numero" id="stat-mes-atual">—</div>
+                <div class="stat-label">Abertas no mês atual</div>
+                <div class="stat-sublabel" id="label-mes-atual">—</div>
+            </div>
+            <div class="stat-card cinza">
+                <div class="stat-numero" id="stat-mes-anterior">—</div>
+                <div class="stat-label">Abertas no mês anterior</div>
+                <div class="stat-sublabel" id="label-mes-anterior">—</div>
+            </div>
+        </div>
+
+        <!-- Linha 3: Resultados -->
+        <div class="secao-titulo-dash">Resultados das Avaliações</div>
+        <div class="cards-stats">
+            <div class="stat-card verde">
+                <div class="stat-numero" id="stat-procedentes">—</div>
+                <div class="stat-label">Procedentes</div>
+            </div>
+            <div class="stat-card vermelho">
+                <div class="stat-numero" id="stat-improcedentes">—</div>
+                <div class="stat-label">Improcedentes</div>
+            </div>
+            <div class="stat-card laranja">
+                <div class="stat-numero" id="stat-em-analise">—</div>
+                <div class="stat-label">Em Análise</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:12px; color:#1a237e;">Bem-vindo ao SIGRA</h3>
+            <p style="color:#666; line-height:1.6;">
+                Use o menu lateral para navegar pelo sistema.
+                Suas pendências estão destacadas acima — clique em
+                <strong>Reclamações → Minhas Pendências</strong> para ver o que precisa da sua atenção.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    async function carregarStats() {
+        const resultado = await api('GET', '/dashboard/stats');
+        if (resultado && resultado.ok) {
+            const d = resultado.dados;
+            document.getElementById('stat-abertas').textContent      = d.abertas;
+            document.getElementById('stat-pendencias').textContent   = d.minhas_pendencias;
+            document.getElementById('stat-concluidas').textContent   = d.concluidas;
+            document.getElementById('stat-mes-atual').textContent    = d.mes_atual;
+            document.getElementById('stat-mes-anterior').textContent = d.mes_anterior;
+            document.getElementById('label-mes-atual').textContent   = d.nome_mes_atual;
+            document.getElementById('label-mes-anterior').textContent= d.nome_mes_anterior;
+            document.getElementById('stat-procedentes').textContent  = d.procedentes;
+            document.getElementById('stat-improcedentes').textContent= d.improcedentes;
+            document.getElementById('stat-em-analise').textContent   = d.em_analise;
+        }
+    }
+
+    carregarStats();
+</script>
+
+</body>
+</html>

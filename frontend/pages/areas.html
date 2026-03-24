@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Áreas — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 class="pagina-titulo" style="margin:0;">Áreas</h2>
+            <button class="btn btn-success" onclick="abrirModal()">+ Nova Área</button>
+        </div>
+        <div class="card">
+            <div class="tabela-container">
+                <table>
+                    <thead><tr><th>Nome</th><th>Responsável</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody id="tabela-body"><tr><td colspan="4" style="text-align:center;color:#999;">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:460px;">
+        <h3 id="modal-titulo">Nova Área</h3>
+        <input type="hidden" id="area-id" />
+        <div class="campo"><label>Nome *</label><input type="text" id="nome" /></div>
+        <div class="campo"><label>Responsável</label><input type="text" id="descricao" placeholder="Nome do responsável pela área" /></div>
+        <div id="modal-alerta" class="alerta erro"></div>
+        <div class="modal-rodape">
+            <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-success" onclick="salvar()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    async function carregar() {
+        const r = await api('GET', '/areas');
+        const tbody = document.getElementById('tabela-body');
+        if (!r.ok || !r.dados.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;">Nenhuma área cadastrada.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = r.dados.map(a => `
+            <tr style="${!a.ativo ? 'opacity:0.5;' : ''}">
+                <td><strong>${a.nome}</strong></td>
+                <td>${a.descricao || '—'}</td>
+                <td><span class="badge ${a.ativo ? 'badge-verde' : 'badge-vermelho'}">${a.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                <td style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary" onclick="editar('${a.id}','${a.nome}','${a.descricao||''}')">Editar</button>
+                    <button class="btn ${a.ativo ? 'btn-danger' : 'btn-success'}" onclick="alterarStatus('${a.id}','${a.nome}',${a.ativo})">
+                        ${a.ativo ? 'Inativar' : 'Reativar'}
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function abrirModal() {
+        document.getElementById('modal-titulo').textContent = 'Nova Área';
+        document.getElementById('area-id').value = '';
+        document.getElementById('nome').value = '';
+        document.getElementById('descricao').value = '';
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function editar(id, nome, descricao) {
+        document.getElementById('modal-titulo').textContent = 'Editar Área';
+        document.getElementById('area-id').value = id;
+        document.getElementById('nome').value = nome;
+        document.getElementById('descricao').value = descricao;
+        document.getElementById('modal-alerta').className = 'alerta erro';
+        document.getElementById('modal').classList.add('aberto');
+    }
+
+    function fecharModal() { document.getElementById('modal').classList.remove('aberto'); }
+
+    async function alterarStatus(id, nome, ativo) {
+        const acao = ativo ? 'inativar' : 'reativar';
+        if (!confirm(`Deseja ${acao} a área "${nome}"?`)) return;
+        const r = ativo
+            ? await api('DELETE', '/areas/' + id)
+            : await api('PUT', '/areas/' + id + '/reativar');
+        if (r.ok) carregar();
+        else alert('Erro ao alterar status.');
+    }
+
+    async function salvar() {
+        const id = document.getElementById('area-id').value;
+        const corpo = {
+            nome:      document.getElementById('nome').value.trim(),
+            descricao: document.getElementById('descricao').value.trim(),
+        };
+        const alerta = document.getElementById('modal-alerta');
+        if (!corpo.nome) { alerta.textContent = 'Nome é obrigatório.'; alerta.classList.add('visivel'); return; }
+        const r = id ? await api('PUT', '/areas/' + id, corpo) : await api('POST', '/areas', corpo);
+        if (r.ok) { fecharModal(); carregar(); }
+        else { alerta.textContent = r.dados.erro || 'Erro ao salvar.'; alerta.classList.add('visivel'); }
+    }
+
+    carregar();
+</script>
+</body>
+</html>

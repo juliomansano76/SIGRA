@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Nova Reclamação — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .upload-area { border:2px dashed #ddd; border-radius:8px; padding:24px; text-align:center; cursor:pointer; transition:border 0.2s; }
+        .upload-area:hover { border-color:#2c2c2c; }
+        .upload-area input { display:none; }
+        .arquivos-lista { margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; }
+        .arquivo-item { background:#f5f5f5; border-radius:6px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px; }
+        .arquivo-item button { background:none; border:none; color:#c62828; cursor:pointer; font-size:14px; }
+        .rodape-fixo { position:fixed; bottom:0; left:240px; right:0; background:white; border-top:1px solid #eee; padding:16px 32px; display:flex; gap:12px; justify-content:flex-end; z-index:50; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo" style="padding-bottom:80px;">
+        <h2 class="pagina-titulo">Nova Reclamação</h2>
+
+        <div class="card">
+            <h3 style="margin-bottom:20px;color:#2c2c2c;">Dados da Reclamação</h3>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="campo" style="grid-column:1/-1;">
+                    <label>Cliente *</label>
+                    <select id="cliente_id">
+                        <option value="">Selecione o cliente...</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label>Nossa NF</label>
+                    <input type="text" id="nossa_nf" placeholder="Número da nota fiscal" />
+                </div>
+                <div class="campo">
+                    <label>Lote</label>
+                    <input type="text" id="lote" placeholder="Número do lote" />
+                </div>
+                <div class="campo">
+                    <label>Metragem</label>
+                    <input type="number" id="metragem" placeholder="Ex: 150.5" step="0.01" />
+                </div>
+                <div class="campo">
+                    <label>Artigo</label>
+                    <input type="text" id="artigo" placeholder="Nome ou código do artigo" />
+                </div>
+                <div class="campo">
+                    <label>Nº RNC do Cliente</label>
+                    <input type="text" id="rnc_cliente" placeholder="Número da RNC do cliente" />
+                </div>
+            </div>
+
+            <div class="campo">
+                <label>Descrição do Problema *</label>
+                <textarea id="descricao" rows="5" placeholder="Descreva detalhadamente o problema relatado pelo cliente..."></textarea>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:16px;color:#2c2c2c;">Fotos / Vídeos do Problema</h3>
+            <div class="upload-area" onclick="document.getElementById('input-arquivos').click()">
+                <input type="file" id="input-arquivos" multiple accept="image/*,video/*,.pdf" onchange="adicionarArquivos(this.files)" />
+                <p style="color:#666;font-size:14px;">📎 Clique para selecionar arquivos</p>
+                <p style="color:#999;font-size:12px;margin-top:4px;">Imagens, vídeos ou PDFs — sem limite de quantidade</p>
+            </div>
+            <div class="arquivos-lista" id="arquivos-lista"></div>
+        </div>
+
+        <div id="alerta-geral" class="alerta erro"></div>
+    </div>
+</div>
+
+<div class="rodape-fixo">
+    <a href="/pages/reclamacoes.html" class="btn btn-secondary">Cancelar</a>
+    <button class="btn btn-secondary" id="btn-rascunho" onclick="salvar(false)">💾 Salvar Rascunho</button>
+    <button class="btn btn-primary" id="btn-concluir" onclick="salvar(true)">✅ Concluir e Enviar para Qualidade</button>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+
+    let arquivosSelecionados = [];
+    let salvando = false;
+
+    async function carregarClientes() {
+        const r = await api('GET', '/clientes');
+        if (!r.ok) return;
+        const select = document.getElementById('cliente_id');
+        r.dados
+            .filter(c => c.ativo)
+            .forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.nome;
+                select.appendChild(opt);
+            });
+    }
+
+    function adicionarArquivos(files) {
+        Array.from(files).forEach(f => {
+            if (!arquivosSelecionados.find(a => a.name === f.name && a.size === f.size)) {
+                arquivosSelecionados.push(f);
+            }
+        });
+        renderizarArquivos();
+        // Reseta o input para permitir selecionar o mesmo arquivo novamente
+        document.getElementById('input-arquivos').value = '';
+    }
+
+    function removerArquivo(index) {
+        arquivosSelecionados.splice(index, 1);
+        renderizarArquivos();
+    }
+
+    function renderizarArquivos() {
+        const lista = document.getElementById('arquivos-lista');
+        lista.innerHTML = arquivosSelecionados.map((f, i) => `
+            <div class="arquivo-item">
+                📄 ${f.name} <span style="color:#999;">(${(f.size/1024).toFixed(0)}kb)</span>
+                <button onclick="removerArquivo(${i})">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function setBotoes(desabilitar) {
+        ['btn-rascunho', 'btn-concluir'].forEach(id => {
+            const b = document.getElementById(id);
+            b.disabled = desabilitar;
+            b.style.opacity = desabilitar ? '0.6' : '';
+        });
+    }
+
+    async function salvar(concluir) {
+        if (salvando) return;  // ← bloqueia duplo clique
+        salvando = true;
+        setBotoes(true);
+
+        const alerta = document.getElementById('alerta-geral');
+        alerta.className = 'alerta erro';
+
+        const corpo = {
+            cliente_id: document.getElementById('cliente_id').value,
+            nossa_nf:   document.getElementById('nossa_nf').value.trim(),
+            lote:       document.getElementById('lote').value.trim(),
+            metragem:   document.getElementById('metragem').value,
+            artigo:     document.getElementById('artigo').value.trim(),
+            rnc_cliente: document.getElementById('rnc_cliente').value.trim(),
+            descricao:  document.getElementById('descricao').value.trim(),
+            concluir,
+        };
+
+        if (!corpo.cliente_id || !corpo.descricao) {
+            alerta.textContent = 'Cliente e descrição são obrigatórios.';
+            alerta.classList.add('visivel');
+            setBotoes(false);
+            salvando = false;
+            return;
+        }
+
+        const r = await api('POST', '/reclamacoes', corpo);
+        if (!r.ok) {
+            alerta.textContent = r.dados.erro || 'Erro ao salvar reclamação.';
+            alerta.classList.add('visivel');
+            setBotoes(false);
+            salvando = false;
+            return;
+        }
+
+        // Upload dos arquivos
+        if (arquivosSelecionados.length > 0) {
+            const formData = new FormData();
+            arquivosSelecionados.forEach(f => formData.append('arquivos', f));
+            formData.append('etapa', 'cadastro');
+            await fetch(`/api/reclamacoes/${r.dados.id}/arquivos`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                body: formData
+            });
+        }
+
+        window.location.href = `/pages/detalhe-reclamacao.html?id=${r.dados.id}`;
+    }
+
+    carregarClientes();
+</script>
+</body>
+</html>
