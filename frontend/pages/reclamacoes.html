@@ -4,75 +4,432 @@
     <meta charset="UTF-8">
     <title>Reclamações — SIGRA</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
-        .filtros { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
-        .filtros input, .filtros select { padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px; outline:none; }
-        .filtros input:focus, .filtros select:focus { border-color:#2c2c2c; }
-        .btn-link { background:none; border:none; color:#1565c0; cursor:pointer; font-size:13px; text-decoration:underline; padding:0; }
+        /* ── Tokens ───────────────────────────── */
+        :root {
+            --c-surface:   #f7f8fa;
+            --c-white:     #ffffff;
+            --c-border:    #e4e7ec;
+            --c-text:      #111827;
+            --c-muted:     #6b7280;
+            --c-accent:    #1a5c3a;
+            --c-accent-lt: #ecf7f1;
+            --c-pending:   #f59e0b;
+            --c-pending-lt:#fffbeb;
+            --c-danger:    #dc2626;
+            --radius:      10px;
+            --shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+            --shadow-md:   0 4px 16px rgba(0,0,0,.10);
+        }
 
-        /* Badges de status — cores distintas por grupo */
-        .badge-qualidade   { background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; }
-        .badge-comercial   { background:#fff3e0; color:#e65100; border:1px solid #ffcc80; }
-        .badge-visita      { background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; }
-        .badge-devolucao   { background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; }
-        .badge-credito     { background:#e0f7fa; color:#00695c; border:1px solid #80cbc4; }
-        .badge-encerramento{ background:#fce4ec; color:#880e4f; border:1px solid #f48fb1; }
-        .badge-concluida   { background:#e8f5e9; color:#1b5e20; border:1px solid #66bb6a; font-weight:700; }
-        .badge-cancelada   { background:#ffebee; color:#b71c1c; border:1px solid #ef9a9a; }
-        .badge-rascunho    { background:#f5f5f5; color:#616161; border:1px solid #bdbdbd; }
-        .badge-cadastrada  { background:#e8eaf6; color:#283593; border:1px solid #9fa8da; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--c-surface); }
+
+        /* ── Header da página ─────────────────── */
+        .page-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .page-title {
+            font-size: 22px; font-weight: 600; color: var(--c-text); margin: 0;
+            letter-spacing: -0.3px;
+        }
+        .page-actions { display: flex; gap: 10px; align-items: center; }
+
+        /* ── Botão Lotes (gatilho drawer) ─────── */
+        .btn-lotes-trigger {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: var(--radius);
+            background: var(--c-white); border: 1.5px solid var(--c-border);
+            font-size: 13px; font-weight: 600; color: var(--c-accent);
+            cursor: pointer; transition: all .15s;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .btn-lotes-trigger:hover { background: var(--c-accent-lt); border-color: var(--c-accent); }
+        .btn-lotes-trigger .lotes-count {
+            background: var(--c-accent); color: #fff;
+            font-family: 'DM Mono', monospace; font-size: 11px;
+            padding: 1px 7px; border-radius: 20px; min-width: 20px; text-align: center;
+        }
+        .btn-lotes-trigger .lotes-count.tem-pendencia {
+            background: var(--c-pending);
+        }
+
+        /* ── Filtros ──────────────────────────── */
+        .filtros-bar {
+            display: flex; gap: 10px; flex-wrap: wrap;
+            background: var(--c-white);
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .filtros-bar input,
+        .filtros-bar select {
+            padding: 8px 12px;
+            border: 1.5px solid var(--c-border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--c-text);
+            background: var(--c-surface);
+            outline: none;
+            transition: border-color .15s;
+        }
+        .filtros-bar input:focus,
+        .filtros-bar select:focus { border-color: var(--c-accent); background: #fff; }
+        .filtros-bar input[type="text"] { flex: 1; min-width: 200px; }
+        .filtros-bar .btn-clear {
+            padding: 8px 14px; border-radius: 8px;
+            background: none; border: 1.5px solid var(--c-border);
+            font-size: 12px; color: var(--c-muted);
+            cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+        }
+        .filtros-bar .btn-clear:hover { background: #fee2e2; border-color: #fca5a5; color: var(--c-danger); }
+
+        /* ── Badge dúvidas SAC ────────────────── */
+        .badge-duvidas {
+            display: none;
+            background: #dc2626;
+            color: #fff;
+            font-size: 12px; font-weight: 600;
+            padding: 10px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            line-height: 1.6;
+        }
+
+        /* ── Tabela ───────────────────────────── */
+        .tabela-card {
+            background: var(--c-white);
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .tabela-card table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .tabela-card thead tr { background: #f9fafb; border-bottom: 1.5px solid var(--c-border); }
+        .tabela-card th {
+            padding: 11px 14px;
+            font-size: 11px; font-weight: 600; letter-spacing: .5px;
+            text-transform: uppercase; color: var(--c-muted);
+            white-space: nowrap; text-align: left;
+        }
+        .tabela-card td {
+            padding: 12px 14px;
+            font-size: 13px; color: var(--c-text);
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+        .tabela-card tbody tr { transition: background .1s; }
+        .tabela-card tbody tr:hover { background: #f9fafb; }
+        .tabela-card tbody tr:last-child td { border-bottom: none; }
+
+        /* Linha pendente */
+        .tabela-card tbody tr.linha-pendente {
+            background: var(--c-pending-lt);
+            border-left: 3px solid var(--c-pending);
+        }
+        .tabela-card tbody tr.linha-pendente:hover { background: #fef3c7; }
+
+        /* Número da rec */
+        .rec-codigo {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px; font-weight: 500;
+            color: var(--c-accent);
+        }
+        .icon-pendencia { margin-right: 4px; font-size: 12px; }
+
+        /* ── Badges de status ─────────────────── */
+        .badge-status-cell {
+            display: inline-block;
+            font-size: 11px; font-weight: 600;
+            padding: 3px 10px; border-radius: 20px;
+            white-space: normal; line-height: 1.4; text-align: center;
+        }
+        .badge-qualidade    { background: #dcfce7; color: #15803d; }
+        .badge-comercial    { background: #ffedd5; color: #c2410c; }
+        .badge-visita       { background: #f3e8ff; color: #7c3aed; }
+        .badge-devolucao    { background: #dbeafe; color: #1d4ed8; }
+        .badge-credito      { background: #ccfbf1; color: #0f766e; }
+        .badge-encerramento { background: #fce7f3; color: #9d174d; }
+        .badge-concluida    { background: #d1fae5; color: #065f46; font-weight: 700; }
+        .badge-cancelada    { background: #fee2e2; color: #991b1b; }
+        .badge-rascunho     { background: #f3f4f6; color: #4b5563; }
+        .badge-cadastrada   { background: #e0e7ff; color: #3730a3; }
+        .badge-cinza        { background: #f3f4f6; color: #6b7280; }
+
+        /* ── Botões de ação ───────────────────── */
+        .btn-acao {
+            padding: 6px 12px; border-radius: 8px;
+            font-size: 12px; font-weight: 600;
+            cursor: pointer; border: none;
+            font-family: 'DM Sans', sans-serif;
+            text-decoration: none; display: inline-block;
+            transition: all .15s; white-space: nowrap;
+            max-width: 100%; box-sizing: border-box;
+            box-shadow: none !important; outline: none;
+        }
+        .btn-acao-primary   { background: var(--c-accent); color: #fff; }
+        .btn-acao-primary:hover { background: #134d30; }
+        .btn-acao-secondary { background: #f3f4f6; color: #374151; }
+        .btn-acao-secondary:hover { background: #e5e7eb; }
+        .btn-acao-lote      { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .btn-acao-lote:hover { background: #dbeafe; }
+
+        /* Checkbox seleção */
+        .rec-checkbox { cursor: pointer; accent-color: var(--c-accent); }
+
+        /* ── Barra de seleção ─────────────────── */
+        .barra-selecao {
+            position: fixed; bottom: 0; left: 240px; right: 0;
+            background: var(--c-accent); color: white;
+            padding: 14px 28px;
+            display: flex; align-items: center; gap: 16px;
+            z-index: 500; transform: translateY(100%);
+            transition: transform .2s cubic-bezier(.4,0,.2,1);
+            font-family: 'DM Sans', sans-serif;
+        }
+        .barra-selecao.visivel { transform: translateY(0); }
+        .barra-selecao span { flex: 1; font-size: 14px; font-weight: 500; }
+
+        /* ── DRAWER de Lotes ──────────────────── */
+        .drawer-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.3);
+            z-index: 800;
+            opacity: 0; pointer-events: none;
+            transition: opacity .25s;
+        }
+        .drawer-overlay.aberto { opacity: 1; pointer-events: all; }
+
+        .drawer {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: 360px;
+            background: var(--c-white);
+            box-shadow: -8px 0 40px rgba(0,0,0,.15);
+            z-index: 900;
+            transform: translateX(100%);
+            transition: transform .28s cubic-bezier(.4,0,.2,1);
+            display: flex; flex-direction: column;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .drawer.aberto { transform: translateX(0); }
+
+        .drawer-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--c-border);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .drawer-titulo {
+            font-size: 15px; font-weight: 600; color: var(--c-text);
+        }
+        .drawer-close {
+            width: 32px; height: 32px; border-radius: 8px;
+            border: none; background: #f3f4f6;
+            cursor: pointer; font-size: 18px; color: var(--c-muted);
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s;
+        }
+        .drawer-close:hover { background: #e5e7eb; color: var(--c-text); }
+
+        .drawer-body {
+            flex: 1; overflow-y: auto; padding: 16px 24px;
+        }
+
+        .drawer-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--c-border);
+            flex-shrink: 0;
+        }
+
+        /* Cards de lote no drawer */
+        .lote-item {
+            border: 1.5px solid var(--c-border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            text-decoration: none;
+            display: block;
+            transition: all .15s;
+            background: var(--c-white);
+        }
+        .lote-item:hover { border-color: var(--c-accent); box-shadow: var(--shadow-sm); }
+        .lote-item.pendente { border-color: var(--c-pending); background: var(--c-pending-lt); }
+        .lote-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .lote-item-codigo { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--c-accent); }
+        .lote-item-badge  { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #d1fae5; color: #065f46; }
+        .lote-item-status { font-size: 12px; color: var(--c-muted); margin-bottom: 4px; }
+        .lote-item-recs   { font-size: 11px; color: #9ca3af; }
+        .lote-estrela     { color: var(--c-pending); margin-right: 4px; }
+
+        /* Todas as tds com overflow controlado */
+        .tabela-reclamacoes td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; }
+
+        /* Coluna checkbox — mínima quando vazia */
+        .tabela-reclamacoes th:first-child,
+        .tabela-reclamacoes td:first-child { width: 28px; min-width: 28px; padding: 4px 4px; white-space: nowrap; }
+
+        /* Coluna Nº */
+        .tabela-reclamacoes th:nth-child(2),
+        .tabela-reclamacoes td:nth-child(2) { width: 130px; }
+
+        /* Cliente */
+        .tabela-reclamacoes th:nth-child(3),
+        .tabela-reclamacoes td:nth-child(3) { width: 28%; }
+
+        /* Nossa NF */
+        .tabela-reclamacoes th:nth-child(4),
+        .tabela-reclamacoes td:nth-child(4) { width: 90px; }
+
+        /* Artigo */
+        .tabela-reclamacoes th:nth-child(5),
+        .tabela-reclamacoes td:nth-child(5) { width: 110px; }
+
+        /* Status */
+        .tabela-reclamacoes th:nth-child(6),
+        .tabela-reclamacoes td:nth-child(6) { width: 125px; white-space: normal; }
+
+        /* Aberta em */
+        .tabela-reclamacoes th:nth-child(7),
+        .tabela-reclamacoes td:nth-child(7) { width: 90px; }
+
+        /* Ações */
+        .tabela-reclamacoes th:last-child,
+        .tabela-reclamacoes td:last-child { width: 110px; }
+            width: 100%; padding: 10px;
+            border: 2px dashed var(--c-border);
+            background: none; border-radius: var(--radius);
+            color: var(--c-muted); font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+        }
+        .btn-criar-lote:hover { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-lt); }
     </style>
 </head>
 <body>
 <div class="layout">
     <div id="sidebar-container"></div>
     <div class="conteudo">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-            <h2 class="pagina-titulo" style="margin:0;">Reclamações</h2>
-            <a href="/pages/nova-reclamacao.html" class="btn btn-success" id="btn-nova">+ Nova Reclamação</a>
+
+        <!-- Header -->
+        <div class="page-header">
+            <h2 class="page-title">Reclamações</h2>
+            <div class="page-actions">
+                <button class="btn-lotes-trigger" onclick="abrirDrawer()" id="btn-lotes-trigger">
+                    📦 Lotes de Devolução
+                    <span class="lotes-count" id="lotes-count">0</span>
+                </button>
+                <a href="/pages/nova-reclamacao.html" class="btn btn-success" id="btn-nova" style="font-family:'DM Sans',sans-serif">+ Nova Reclamação</a>
+            </div>
         </div>
 
-        <div class="filtros">
+        <!-- Filtros -->
+        <div class="filtros-bar">
             <input type="text" id="filtro-busca" placeholder="🔍 Buscar por cliente, Nº ou artigo..." oninput="filtrar()" />
             <select id="filtro-status" onchange="filtrar()">
                 <option value="">Todos os status</option>
                 <option value="minhas_pendencias">⚡ Minhas Pendências</option>
+                <option disabled>──────────────────</option>
                 <option value="rascunho">Rascunho</option>
-                <option value="aguardando_analise_qualidade">Aguardando Qualidade</option>
-                <option value="aguardando_comercial_procedente">Aguardando Comercial</option>
-                <option value="aguardando_comercial_improcedente">Aguardando Comercial (Improcedente)</option>
-                <option value="aguardando_visita_tecnica_qualidade">Aguardando Visita Técnica</option>
-                <option value="encaminhando_devolucao_sac">Encaminhando Devolução</option>
-                <option value="gerando_credito_financeiro">Gerando Crédito</option>
-                <option value="aguardando_encerramento_comercial">Aguardando Encerramento</option>
+                <option disabled>── Qualidade ──────</option>
+                <option value="aguardando_analise_qualidade">Ag. Qualidade</option>
+                <option value="aguardando_visita_tecnica_qualidade">Ag. Visita Técnica</option>
+                <option disabled>── Comercial ──────</option>
+                <option value="aguardando_comercial_procedente">Ag. Comercial (Procedente)</option>
+                <option value="aguardando_comercial_improcedente">Ag. Comercial (Improcedente)</option>
+                <option value="aguardando_direcionamento_comercial_pos_visita">Ag. Direcionamento</option>
+                <option disabled>── Devolução ───────</option>
+                <option value="encaminhando_devolucao_sac">Encam. Dev. — SAC</option>
+                <option value="encaminhando_devolucao_conferindo_nf">Conf. NF Cliente</option>
+                <option value="encaminhando_devolucao_conferindo_nf_fiscal">Fiscal NF</option>
+                <option value="encaminhando_devolucao_sac_solicitar_coleta">Ag. Coleta</option>
+                <option value="encaminhando_devolucao_aguardando_chegada_material">Ag. Material</option>
+                <option value="encaminhando_devolucao_aguardando_revisao">Ag. Revisão</option>
+                <option value="encaminhando_devolucao_aguardando_conferencia_material">Ag. Conf. Material</option>
+                <option value="encaminhando_devolucao_aguardando_of">Ag. OF (PCP)</option>
+                <option value="encaminhando_devolucao_aguardando_correcao_nf_cliente">Ag. Correção NF</option>
+                <option disabled>── Crédito ─────────</option>
+                <option value="gerando_credito_sac">Def. Crédito (SAC)</option>
+                <option value="gerando_credito_financeiro">Ger. Crédito (Fiscal)</option>
+                <option value="aguardando_aprovacao_financeiro">Ag. Financeiro</option>
+                <option value="aguardando_complemento_sac">💬 Ag. SAC (Dúvida)</option>
+                <option disabled>── Encerramento ────</option>
+                <option value="aguardando_encerramento_comercial">Ag. Encerramento</option>
                 <option value="concluida">Concluída</option>
                 <option value="cancelada">Cancelada</option>
             </select>
             <input type="date" id="filtro-de"  onchange="filtrar()" title="De" style="max-width:140px" />
             <input type="date" id="filtro-ate" onchange="filtrar()" title="Até" style="max-width:140px" />
-            <button class="btn btn-secondary btn-sm" onclick="limparDatas()">✕ Datas</button>
+            <button class="btn-clear" onclick="limparDatas()">✕ Datas</button>
         </div>
 
-        <div class="card">
-            <div class="tabela-container">
+        <!-- Badge dúvidas SAC -->
+        <div id="badge-duvidas-sac" class="badge-duvidas"></div>
+
+        <!-- Tabela -->
+        <div class="tabela-card">
+            <div class="tabela-container tabela-reclamacoes">
                 <table>
                     <thead>
                         <tr>
+                            <th style="width:20px;padding:4px 0"></th>
                             <th>Nº</th>
                             <th>Cliente</th>
                             <th>Nossa NF</th>
                             <th>Artigo</th>
-                            <th>Problema</th> <th>Status</th>
+                            <th>Status</th>
                             <th>Aberta em</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-body">
-                        <tr><td colspan="8" style="text-align:center;color:#999;">Carregando...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:32px">Carregando...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+    </div><!-- conteudo -->
+</div><!-- layout -->
+
+<!-- Barra de seleção -->
+<div class="barra-selecao" id="barraSelecao">
+    <span id="barraSelecaoTexto">0 reclamações selecionadas</span>
+    <button class="btn btn-secondary" onclick="limparSelecao()">Cancelar</button>
+    <button class="btn btn-success" onclick="criarLoteComSelecionadas()">📦 Criar Lote</button>
+</div>
+
+<!-- Drawer overlay -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="fecharDrawer()"></div>
+
+<!-- Drawer de Lotes -->
+<div class="drawer" id="drawerLotes">
+    <div class="drawer-header">
+        <span class="drawer-titulo">📦 Lotes de Devolução</span>
+        <button class="drawer-close" onclick="fecharDrawer()">×</button>
+    </div>
+    <div class="drawer-body">
+        <button class="btn-criar-lote" id="btnCriarLote" onclick="iniciarCriacaoLote()" style="display:none;margin-bottom:16px">
+            + Criar Lote com Selecionadas
+        </button>
+        <div id="listaLotes"><p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px 0">Carregando...</p></div>
+    </div>
+</div>
+
+<!-- Modal Lote Detalhe (mantido para compatibilidade) -->
+<div class="modal-overlay" id="modalLote">
+    <div class="modal" style="max-width:680px">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <strong id="modalLoteTitulo" style="font-size:16px;color:#1a237e">Lote</strong>
+            <button onclick="fecharModalLote()" style="background:none;border:none;font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div id="modalLoteCorpo"></div>
+        <div id="modalLoteFooter" style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"></div>
     </div>
 </div>
 
@@ -90,29 +447,30 @@
     let todasReclamacoes = [];
 
     const statusLabel = {
-        rascunho:                                       { label: 'Rascunho',                  cor: 'badge-rascunho'    },
-        reclamacao_cadastrada:                          { label: 'Cadastrada',                 cor: 'badge-cadastrada'  },
-        aguardando_analise_qualidade:                   { label: 'Ag. Qualidade',              cor: 'badge-qualidade'   },
-        aguardando_comercial_procedente:                { label: 'Ag. Comercial',              cor: 'badge-comercial'   },
-        aguardando_comercial_improcedente:              { label: 'Ag. Comercial',              cor: 'badge-comercial'   },
-        aguardando_visita_tecnica_qualidade:            { label: 'Ag. Visita Técnica',         cor: 'badge-visita'      },
-        aguardando_direcionamento_comercial_pos_visita: { label: 'Ag. Direcionamento',         cor: 'badge-comercial'   },
-        encaminhando_devolucao_sac:                     { label: 'Encam. Devolução',           cor: 'badge-devolucao'   },
-        encaminhando_devolucao_conferindo_nf:           { label: 'Conferindo NF',              cor: 'badge-devolucao'   },
-        encaminhando_devolucao_corrigindo_nf:           { label: 'Corrigindo NF',              cor: 'badge-devolucao'   },
-        encaminhando_devolucao_sac_solicitar_coleta:    { label: 'Ag. Coleta',                 cor: 'badge-devolucao'   },
-        encaminhando_devolucao_aguardando_chegada_material: { label: 'Ag. Material',           cor: 'badge-devolucao'   },
-        encaminhando_devolucao_aguardando_revisao:      { label: 'Ag. Revisão',               cor: 'badge-devolucao'   },
-        encaminhando_devolucao_aguardando_of:           { label: 'Ag. OF',                    cor: 'badge-devolucao'   },
-        encaminhando_devolucao_aguardando_conferencia_material: { label: 'Ag. Conferência',   cor: 'badge-devolucao'   },
-        encaminhando_devolucao_aguardando_correcao_nf_cliente:  { label: 'Ag. Correção NF',   cor: 'badge-devolucao'   },
-        gerando_credito_financeiro:                     { label: 'Gerando Crédito',            cor: 'badge-credito'     },
-        gerando_credito_sac:                            { label: 'Definindo Crédito',          cor: 'badge-credito'     },
-        aguardando_aprovacao_financeiro:                { label: 'Ag. Aprov. Financeiro',      cor: 'badge-credito'     },
-        aguardando_complemento_sac:                     { label: 'Ag. Complemento SAC',        cor: 'badge-comercial'   },
-        aguardando_encerramento_comercial:              { label: 'Ag. Encerramento',           cor: 'badge-encerramento'},
-        concluida:                                      { label: 'Concluída',                  cor: 'badge-concluida'   },
-        cancelada:                                      { label: 'Cancelada',                  cor: 'badge-cancelada'   },
+        rascunho:                                           { label: 'Rascunho',         cor: 'badge-rascunho'    },
+        reclamacao_cadastrada:                              { label: 'Cadastrada',        cor: 'badge-cadastrada'  },
+        aguardando_analise_qualidade:                       { label: 'Ag. Qualidade',     cor: 'badge-qualidade'   },
+        aguardando_comercial_procedente:                    { label: 'Ag. Comercial',     cor: 'badge-comercial'   },
+        aguardando_comercial_improcedente:                  { label: 'Ag. Comercial',     cor: 'badge-comercial'   },
+        aguardando_visita_tecnica_qualidade:                { label: 'Ag. Visita',        cor: 'badge-visita'      },
+        aguardando_direcionamento_comercial_pos_visita:     { label: 'Ag. Direcion.',     cor: 'badge-comercial'   },
+        encaminhando_devolucao_sac:                         { label: 'Encam. Dev.',       cor: 'badge-devolucao'   },
+        encaminhando_devolucao_conferindo_nf:               { label: 'Conf. NF',          cor: 'badge-devolucao'   },
+        encaminhando_devolucao_conferindo_nf_fiscal:        { label: 'Fiscal NF',         cor: 'badge-devolucao'   },
+        encaminhando_devolucao_corrigindo_nf:               { label: 'Corrig. NF',        cor: 'badge-devolucao'   },
+        encaminhando_devolucao_sac_solicitar_coleta:        { label: 'Ag. Coleta',        cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_chegada_material: { label: 'Ag. Material',      cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_revisao:          { label: 'Ag. Revisão',       cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_of:               { label: 'Ag. OF',            cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_conferencia_material: { label: 'Ag. Conf.',     cor: 'badge-devolucao'   },
+        encaminhando_devolucao_aguardando_correcao_nf_cliente:  { label: 'Ag. Cor. NF',  cor: 'badge-devolucao'   },
+        gerando_credito_financeiro:                         { label: 'Ger. Crédito',      cor: 'badge-credito'     },
+        gerando_credito_sac:                                { label: 'Def. Crédito',      cor: 'badge-credito'     },
+        aguardando_aprovacao_financeiro:                    { label: 'Ag. Financeiro',    cor: 'badge-credito'     },
+        aguardando_complemento_sac:                         { label: '💬 Ag. SAC',         cor: 'badge-comercial'   },
+        aguardando_encerramento_comercial:                  { label: 'Ag. Encerramen.',   cor: 'badge-encerramento'},
+        concluida:                                          { label: 'Concluída',         cor: 'badge-concluida'   },
+        cancelada:                                          { label: 'Cancelada',         cor: 'badge-cancelada'   },
     };
 
     function formatarData(dt) {
@@ -160,20 +518,15 @@
 
     const tbody = document.getElementById('tabela-body');
     if (!filtradas.length) {
-        // Ajustado o colspan para 7, pois adicionamos uma coluna
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">Nenhuma reclamação encontrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">Nenhuma reclamação encontrada.</td></tr>';
         return;
     }
 
     tbody.innerHTML = filtradas.map(rec => {
-        const s = statusLabel[rec.status] || { label: rec.status, cor: 'badge-cinza' };
-        
-        // Trata a descrição para não quebrar a tabela (remove quebras de linha e limita tamanho)
-        const descLimpa = (rec.descricao || '').replace(/\n/g, ' ');
-        
+        let s = statusLabel[rec.status] || { label: rec.status, cor: 'badge-cinza' };
+
         // --- LÓGICA DE PENDÊNCIA ---
         let ehMinhaPendencia = false;
-
         if (perfilLogado === 'qualidade'  && ['aguardando_analise_qualidade','aguardando_visita_tecnica_qualidade','aguardando_analise_qualidade_pos_visita'].includes(rec.status)) ehMinhaPendencia = true;
         if (perfilLogado === 'comercial'  && ['aguardando_comercial_procedente','aguardando_comercial_improcedente','aguardando_encerramento_comercial','aguardando_direcionamento_comercial_pos_visita'].includes(rec.status)) ehMinhaPendencia = true;
         if (perfilLogado === 'sac'        && ['rascunho','encaminhando_devolucao_sac','encaminhando_devolucao_conferindo_nf','encaminhando_devolucao_corrigindo_nf','encaminhando_devolucao_sac_solicitar_coleta','gerando_credito_sac','encaminhando_devolucao_aguardando_correcao_nf_cliente'].includes(rec.status)) ehMinhaPendencia = true;
@@ -187,21 +540,35 @@
         const classeLinha = ehMinhaPendencia ? 'linha-pendente' : '';
         const raio = ehMinhaPendencia ? '<span class="icon-pendencia" title="Sua ação é necessária">⚡</span>' : '';
 
+        // Checkbox só para rec direcionadas para devolução pelo comercial, ainda não agrupadas
+        const podeSelecionarLote = ['admin','sac'].includes(perfilLogado) &&
+            rec.status === 'encaminhando_devolucao_sac' &&
+            !rec.lote_id;
+
+        // Sufixo do lote no badge — apenas uma vez
+        const loteSufixo = rec.lote_id && rec.lote_codigo
+            ? ` · L${String(rec.lote_codigo).padStart(4,'0')}` : '';
+
+        const btnLabel = rec.lote_id ? 'Ver Lote' : (ehMinhaPendencia ? 'Atender' : 'Ver Detalhes');
+        const btnCls   = rec.lote_id ? 'btn-acao btn-acao-lote' : (ehMinhaPendencia ? 'btn-acao btn-acao-primary' : 'btn-acao btn-acao-secondary');
+        const btnHref  = rec.lote_id
+            ? `/pages/detalhe-lote.html?id=${rec.lote_id}`
+            : `/pages/detalhe-reclamacao.html?id=${rec.id}`;
+
         return `
             <tr class="${classeLinha}">
-                <td>${raio}<strong>REC-${String(rec.codigo).padStart(6,'0')}</strong></td>
-                <td>${rec.cliente_nome}</td>
-                <td>${rec.nossa_nf || '—'}</td>
-                <td>${rec.artigo || '—'}</td>
-                <td class="col-descricao" title="${descLimpa}">${descLimpa}</td>
-                <td><span class="badge ${s.cor}">${s.label}</span></td>
-                <td>${formatarData(rec.criado_em)}</td>
-                <td style="white-space:nowrap">
-                    <a href="/pages/detalhe-reclamacao.html?id=${rec.id}" 
-                       class="btn ${ehMinhaPendencia ? 'btn-success' : 'btn-secondary'}">
-                       ${ehMinhaPendencia ? 'Atender' : 'Ver Detalhes'}
-                    </a>
+                <td style="width:28px;padding:4px;text-align:center">
+                    ${podeSelecionarLote ? `<input type="checkbox" class="rec-checkbox" id="chk-${rec.id}" onchange="toggleSelecao('${rec.id}')" />` : ''}
                 </td>
+                <td title="REC-${String(rec.codigo).padStart(6,'0')}">
+                    ${raio}<span class="rec-codigo">REC-${String(rec.codigo).padStart(6,'0')}</span>
+                </td>
+                <td title="${rec.cliente_nome}">${rec.cliente_nome}</td>
+                <td title="${rec.nossa_nf || ''}">${rec.nossa_nf || '—'}</td>
+                <td title="${rec.artigo || ''}">${rec.artigo || '—'}</td>
+                <td><span class="badge-status-cell ${s.cor}">${s.label}${loteSufixo}</span></td>
+                <td style="color:#6b7280;white-space:nowrap">${formatarData(rec.criado_em)}</td>
+                <td><a href="${btnHref}" class="${btnCls}">${btnLabel}</a></td>
             </tr>
         `;
     }).join('');
@@ -214,7 +581,6 @@
     }
 
     carregar().then(() => {
-        // Pré-filtrar se vier com ?status= do Painel de Gestão
         const params = new URLSearchParams(window.location.search);
         const statusParam = params.get('status');
         if (statusParam) {
@@ -222,6 +588,378 @@
             if (sel) { sel.value = statusParam; filtrar(); }
         }
     });
+
+    // ── LOTES ──────────────────────────────────────────────────
+    let selecionadas = new Set();
+    let lotesData = [];
+
+    const statusLoteLabel = {
+        encaminhando_devolucao_sac:                          'SAC — Verificando NF',
+        encaminhando_devolucao_conferindo_nf:                'SAC — NFs do Cliente',
+        encaminhando_devolucao_conferindo_nf_fiscal:         'Fiscal — Conferindo NF',
+        encaminhando_devolucao_sac_solicitar_coleta:         'SAC — Solicitando Coleta',
+        encaminhando_devolucao_aguardando_chegada_material:  'Expedição — Aguardando Material',
+        encaminhando_devolucao_aguardando_revisao:           'Revisão — Aguardando',
+        encaminhando_devolucao_aguardando_of:                'PCP — Aguardando OF',
+        encaminhando_devolucao_aguardando_conferencia_material: 'Fiscal — Conferindo Material',
+        gerando_credito_sac:                                 'SAC — Definindo Crédito',
+        aguardando_aprovacao_financeiro:                     'Financeiro — Ciência Crédito',
+        aguardando_encerramento_comercial:                   'Comercial — Encerramento',
+        concluido:                                           'Concluído',
+    };
+
+    async function carregarLotes() {
+        const r = await api('GET', '/reclamacoes/lotes');
+        if (!r || !r.ok) return;
+        // api() já unwrapa uma camada — backend retorna {ok,dados:[...]}
+        // então r.dados = {ok:true, dados:[...]} → precisamos r.dados.dados
+        const payload = r.dados;
+        lotesData = (payload && payload.dados) ? payload.dados : (Array.isArray(payload) ? payload : []);
+        renderLotes();
+    }
+
+    function temPendenciaLote(statusLote) {
+        const mapa = {
+            encaminhando_devolucao_sac:                          ['admin','sac'],
+            encaminhando_devolucao_conferindo_nf:                ['admin','sac'],
+            encaminhando_devolucao_conferindo_nf_fiscal:         ['admin','fiscal'],
+            encaminhando_devolucao_sac_solicitar_coleta:         ['admin','sac'],
+            encaminhando_devolucao_aguardando_chegada_material:  ['admin','expedicao'],
+            encaminhando_devolucao_aguardando_revisao:           ['admin','revisao'],
+            encaminhando_devolucao_aguardando_of:                ['admin','pcp'],
+            encaminhando_devolucao_aguardando_conferencia_material: ['admin','fiscal'],
+            gerando_credito_sac:                                 ['admin','sac'],
+            aguardando_aprovacao_financeiro:                     ['admin','financeiro'],
+            aguardando_encerramento_comercial:                   ['admin','comercial'],
+        };
+        return (mapa[statusLote] || []).includes(u?.perfil);
+    }
+
+    function renderLotes() {
+        const lista = document.getElementById('listaLotes');
+        if (!lista) return;
+
+        if (!lotesData.length) {
+            lista.innerHTML = '<p style="color:#999;font-size:12px">Nenhum lote ativo.</p>';
+            return;
+        }
+
+        lista.innerHTML = '';
+        lotesData.forEach(lote => {
+            const codigo = 'LOTE-' + String(lote.codigo).padStart(6, '0');
+            const statusTxt = statusLoteLabel[lote.status] || lote.status;
+            const pendente = temPendenciaLote(lote.status);
+            const recs = (lote.reclamacoes || []).map(r => 'REC-' + String(r.codigo).padStart(6,'0')).join(', ');
+
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <a href="/pages/detalhe-lote.html?id=${lote.id}" class="lote-item ${pendente ? 'pendente' : ''}">
+                    <div class="lote-item-header">
+                        <span class="lote-item-codigo">${pendente ? '<span class="lote-estrela">⭐</span>' : ''}${codigo}</span>
+                        ${lote.status === 'concluido' ? '<span class="lote-item-badge">✅ Concluído</span>' : ''}
+                    </div>
+                    <div class="lote-item-status">${statusTxt}</div>
+                    ${recs ? `<div class="lote-item-recs">${recs}</div>` : ''}
+                </a>`;
+            lista.appendChild(div.firstElementChild);
+        });
+
+        // Atualizar contador no botão trigger
+        const count = lotesData.filter(l => l.status !== 'concluido').length;
+        const countEl = document.getElementById('lotes-count');
+        if (countEl) {
+            countEl.textContent = count;
+            const temPendencia = lotesData.some(l => temPendenciaLote(l.status));
+            countEl.className = 'lotes-count' + (temPendencia ? ' tem-pendencia' : '');
+        }
+    }
+
+    function abrirDrawer() {
+        document.getElementById('drawerLotes').classList.add('aberto');
+        document.getElementById('drawerOverlay').classList.add('aberto');
+    }
+
+    function fecharDrawer() {
+        document.getElementById('drawerLotes').classList.remove('aberto');
+        document.getElementById('drawerOverlay').classList.remove('aberto');
+    }
+
+    function toggleSelecao(recId) {
+        const chk = document.getElementById('chk-' + recId);
+        if (chk && chk.checked) selecionadas.add(recId);
+        else selecionadas.delete(recId);
+        atualizarBarraSelecao();
+    }
+
+    function atualizarBarraSelecao() {
+        const barra = document.getElementById('barraSelecao');
+        const btnCriar = document.getElementById('btnCriarLote');
+        const n = selecionadas.size;
+        if (n > 0) {
+            barra.classList.add('visivel');
+            document.getElementById('barraSelecaoTexto').textContent = n + ' reclamação(ões) selecionada(s)';
+            if (btnCriar) { btnCriar.style.display = 'block'; btnCriar.textContent = `+ Criar Lote (${n} selecionadas)`; }
+        } else {
+            barra.classList.remove('visivel');
+            if (btnCriar) btnCriar.style.display = 'none';
+        }
+    }
+
+    function limparSelecao() {
+        selecionadas.clear();
+        document.querySelectorAll('.rec-checkbox').forEach(c => c.checked = false);
+        atualizarBarraSelecao();
+    }
+
+    function iniciarCriacaoLote() { criarLoteComSelecionadas(); }
+
+    async function criarLoteComSelecionadas() {
+        if (!selecionadas.size) return;
+        if (!confirm(`Criar lote com ${selecionadas.size} reclamação(ões)?`)) return;
+        const r = await api('POST', '/reclamacoes/lotes', { reclamacao_ids: Array.from(selecionadas) });
+        if (r && r.ok) {
+            const d = r.dados.dados || r.dados;
+            const cod = d.codigo_fmt || ('LOTE-' + String(d.codigo||'').padStart(6,'0'));
+            alert('✅ ' + cod + ' criado com sucesso!');
+            limparSelecao();
+            await carregar();
+            await carregarLotes();
+        } else {
+            alert((r && r.dados && r.dados.erro) || 'Erro ao criar lote.');
+        }
+    }
+
+    let loteAtual = null;
+
+    async function abrirLote(loteId) {
+        const r = await api('GET', '/reclamacoes/lotes/' + loteId);
+        if (!r || !r.ok) return alert('Erro ao carregar lote.');
+        loteAtual = (r.dados && r.dados.dados) ? r.dados.dados : r.dados;
+        renderModalLote();
+        document.getElementById('modalLote').classList.add('aberto');
+    }
+
+    function renderModalLote() {
+        const l = loteAtual;
+        if (!l) return;
+        const codigo = 'LOTE-' + String(l.codigo).padStart(6,'0');
+        const statusLabel2 = statusLoteLabel[l.status] || l.status;
+        document.getElementById('modalLoteTitulo').textContent = codigo;
+
+        // Tabela de reclamações vinculadas
+        const recsHtml = (l.reclamacoes||[]).map(r =>
+            `<tr>
+                <td><a href="/pages/detalhe-reclamacao.html?id=${r.id}" target="_blank" style="color:#1a237e;font-weight:600">REC-${String(r.codigo).padStart(6,'0')}</a></td>
+                <td>${r.cliente_nome||'—'}</td>
+                <td>${r.nossa_nf||'—'}</td>
+            </tr>`
+        ).join('');
+
+        // Etapas do fluxo — renderiza a etapa atual com campos editáveis
+        const corpo = `
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+                ${etapaBadge('encaminhando_devolucao_sac','1.SAC',l.status)}
+                ${etapaBadge('encaminhando_devolucao_conferindo_nf_fiscal','2.Fiscal NF',l.status)}
+                ${etapaBadge('encaminhando_devolucao_sac_solicitar_coleta','3.SAC Coleta',l.status)}
+                ${etapaBadge('encaminhando_devolucao_aguardando_chegada_material','4.Expedição',l.status)}
+                ${etapaBadge('encaminhando_devolucao_aguardando_revisao','5.Revisão',l.status)}
+                ${etapaBadge('encaminhando_devolucao_aguardando_of','6.PCP',l.status)}
+                ${etapaBadge('encaminhando_devolucao_aguardando_conferencia_material','7.Fiscal Conf.',l.status)}
+                ${etapaBadge('concluido','✅ Concluído',l.status)}
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;background:#f8f9fa;border-radius:6px">
+                <thead><tr style="background:#e8eaf6">
+                    <th style="padding:6px 10px;text-align:left">Reclamação</th>
+                    <th style="padding:6px 10px;text-align:left">Cliente</th>
+                    <th style="padding:6px 10px;text-align:left">NF</th>
+                </tr></thead>
+                <tbody>${recsHtml}</tbody>
+            </table>
+
+            <div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fff">
+                <div style="font-weight:700;color:#1a237e;margin-bottom:12px;font-size:13px">
+                    📋 Etapa atual: ${statusLabel2}
+                </div>
+                ${renderCamposEtapa(l)}
+            </div>
+
+            <div style="font-size:11px;color:#999;margin-top:12px">
+                Criado por ${l.criado_por_nome||'—'} em ${new Date(l.criado_em).toLocaleString('pt-BR')}
+            </div>`;
+
+        document.getElementById('modalLoteCorpo').innerHTML = corpo;
+
+        // Footer com botão de avanço
+        const footer = document.getElementById('modalLoteFooter');
+        const avancos = {
+            encaminhando_devolucao_sac:                          { proximo:'encaminhando_devolucao_conferindo_nf_fiscal',        perfis:['admin','sac'],      label:'→ Enviar para Fiscal (conferir NF)' },
+            encaminhando_devolucao_conferindo_nf_fiscal:         { proximo:'encaminhando_devolucao_sac_solicitar_coleta',         perfis:['admin','fiscal'],   label:'→ NF OK — Solicitar Coleta' },
+            encaminhando_devolucao_sac_solicitar_coleta:         { proximo:'encaminhando_devolucao_aguardando_chegada_material',  perfis:['admin','sac'],      label:'→ Coleta Solicitada' },
+            encaminhando_devolucao_aguardando_chegada_material:  { proximo:'encaminhando_devolucao_aguardando_revisao',           perfis:['admin','expedicao'],label:'→ Material Recebido' },
+            encaminhando_devolucao_aguardando_revisao:           { proximo:'encaminhando_devolucao_aguardando_of',               perfis:['admin','revisao'],  label:'→ Revisão Concluída' },
+            encaminhando_devolucao_aguardando_of:                { proximo:'encaminhando_devolucao_aguardando_conferencia_material', perfis:['admin','pcp'],  label:'→ OF Emitida' },
+            encaminhando_devolucao_aguardando_conferencia_material:{ proximo:'concluido',                                        perfis:['admin','fiscal'],   label:'→ Conferência OK — Concluir Lote' },
+        };
+        const av = avancos[l.status];
+        footer.innerHTML = '';
+        if (av && av.perfis.includes(u?.perfil)) {
+            footer.innerHTML += `<button class="btn btn-secondary" onclick="salvarDadosLote()">💾 Salvar Rascunho</button>`;
+            footer.innerHTML += `<button class="btn btn-success" onclick="salvarEAvancarLote('${l.id}','${av.proximo}')">${av.label}</button>`;
+        } else {
+            footer.innerHTML += `<button class="btn btn-secondary" onclick="salvarDadosLote()">💾 Salvar</button>`;
+        }
+        footer.innerHTML += `<button class="btn btn-outline" onclick="fecharModalLote()" style="background:#f5f5f5;border:1px solid #ddd">Fechar</button>`;
+    }
+
+    function etapaBadge(etapaStatus, label, statusAtual) {
+        const ordemEtapas = [
+            'encaminhando_devolucao_sac',
+            'encaminhando_devolucao_conferindo_nf_fiscal',
+            'encaminhando_devolucao_sac_solicitar_coleta',
+            'encaminhando_devolucao_aguardando_chegada_material',
+            'encaminhando_devolucao_aguardando_revisao',
+            'encaminhando_devolucao_aguardando_of',
+            'encaminhando_devolucao_aguardando_conferencia_material',
+            'concluido'
+        ];
+        const idxEtapa = ordemEtapas.indexOf(etapaStatus);
+        const idxAtual = ordemEtapas.indexOf(statusAtual);
+        const ativo = etapaStatus === statusAtual;
+        const concluido = idxEtapa < idxAtual;
+        const bg = ativo ? '#1a237e' : concluido ? '#2e7d32' : '#f0f0f0';
+        const color = (ativo || concluido) ? '#fff' : '#999';
+        return `<span style="background:${bg};color:${color};padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">${label}</span>`;
+    }
+
+    function renderCamposEtapa(l) {
+        const st = l.status;
+        if (st === 'encaminhando_devolucao_sac') {
+            return `<p style="color:#666;font-size:13px">SAC deve verificar as NFs das reclamações agrupadas e enviar para o Fiscal conferir.</p>
+                <div class="campo" style="margin-top:8px"><label style="font-size:12px;font-weight:600">Observações</label>
+                <textarea id="lote-obs-nf" class="form-control-edit" rows="2" placeholder="Observações sobre as NFs...">${l.observacoes_nf||''}</textarea></div>`;
+        }
+        if (st === 'encaminhando_devolucao_conferindo_nf_fiscal') {
+            return `<p style="color:#666;font-size:13px">Fiscal deve conferir as NFs das reclamações e aprovar para coleta.</p>
+                <div class="campo"><label style="font-size:12px;font-weight:600">Observações da conferência</label>
+                <textarea id="lote-desc-conf" class="form-control-edit" rows="2" placeholder="Resultado da conferência das NFs...">${l.descricao_conferencia||''}</textarea></div>`;
+        }
+        if (st === 'encaminhando_devolucao_sac_solicitar_coleta') {
+            return `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="campo"><label style="font-size:12px;font-weight:600">Transportadora *</label>
+                    <input id="lote-transp" class="form-control-edit" value="${l.transportadora||''}" placeholder="Nome da transportadora" /></div>
+                    <div class="campo"><label style="font-size:12px;font-weight:600">NF de Coleta</label>
+                    <input id="lote-nf-coleta" class="form-control-edit" value="${l.nf_coleta||''}" placeholder="Nº da NF de coleta" /></div>
+                    <div class="campo"><label style="font-size:12px;font-weight:600">Data da Coleta</label>
+                    <input type="date" id="lote-data-coleta" class="form-control-edit" value="${l.data_coleta ? l.data_coleta.substring(0,10) : ''}" /></div>
+                    <div class="campo"><label style="font-size:12px;font-weight:600">Previsão de Chegada</label>
+                    <input type="date" id="lote-prev-chegada" class="form-control-edit" value="${l.data_prevista_chegada ? l.data_prevista_chegada.substring(0,10) : ''}" /></div>
+                </div>`;
+        }
+        if (st === 'encaminhando_devolucao_aguardando_chegada_material') {
+            return `<p style="color:#666;font-size:13px">Expedição aguarda chegada do material.<br>
+                <strong>Transportadora:</strong> ${l.transportadora||'—'} &nbsp;|&nbsp;
+                <strong>Previsão:</strong> ${l.data_prevista_chegada ? new Date(l.data_prevista_chegada).toLocaleDateString('pt-BR') : '—'}</p>`;
+        }
+        if (st === 'encaminhando_devolucao_aguardando_revisao') {
+            return `<p style="color:#666;font-size:13px">Material recebido. Revisão deve inspecionar e liberar.</p>`;
+        }
+        if (st === 'encaminhando_devolucao_aguardando_of') {
+            return `<p style="color:#666;font-size:13px">Revisão concluída. PCP deve emitir a Ordem de Fabricação.</p>`;
+        }
+        if (st === 'encaminhando_devolucao_aguardando_conferencia_material') {
+            return `<p style="color:#666;font-size:13px">OF emitida. Fiscal deve fazer a conferência final do material.</p>
+                <div class="campo"><label style="font-size:12px;font-weight:600">Resultado da conferência</label>
+                <textarea id="lote-desc-conf" class="form-control-edit" rows="2" placeholder="Descreva o resultado...">${l.descricao_conferencia||''}</textarea></div>`;
+        }
+        if (st === 'concluido') {
+            return `<p style="color:#2e7d32;font-weight:600">✅ Lote concluído. Reclamações encaminhadas para encerramento comercial.</p>`;
+        }
+        return '';
+    }
+
+    function coletarCamposEtapa() {
+        const campos = {};
+        const get = (id) => { const el = document.getElementById(id); return el ? el.value.trim() || null : undefined; };
+        const obs = get('lote-obs-nf'); if (obs !== undefined) campos.observacoes_nf = obs;
+        const transp = get('lote-transp'); if (transp !== undefined) campos.transportadora = transp;
+        const nfCol = get('lote-nf-coleta'); if (nfCol !== undefined) campos.nf_coleta = nfCol;
+        const dtCol = get('lote-data-coleta'); if (dtCol !== undefined) campos.data_coleta = dtCol || null;
+        const prev = get('lote-prev-chegada'); if (prev !== undefined) campos.data_prevista_chegada = prev || null;
+        const desc = get('lote-desc-conf'); if (desc !== undefined) campos.descricao_conferencia = desc;
+        return campos;
+    }
+
+    async function salvarDadosLote() {
+        if (!loteAtual) return;
+        const campos = coletarCamposEtapa();
+        if (!Object.keys(campos).length) return;
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteAtual.id + '/dados', campos);
+        if (r && (r.ok || (r.dados && r.dados.ok))) {
+            // Atualizar loteAtual com novos campos
+            Object.assign(loteAtual, campos);
+            alert('💾 Salvo!');
+        } else {
+            alert('Erro ao salvar.');
+        }
+    }
+
+    async function salvarEAvancarLote(loteId, novoStatus) {
+        if (!confirm('Confirmar avanço de fase para todas as reclamações do lote?')) return;
+        // Salvar campos da etapa primeiro
+        const campos = coletarCamposEtapa();
+        if (Object.keys(campos).length) {
+            await api('PUT', '/reclamacoes/lotes/' + loteId + '/dados', campos);
+        }
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/status', { status: novoStatus });
+        const rok = r && (r.ok || (r.dados && r.dados.ok));
+        if (rok) {
+            fecharModalLote();
+            await carregar();
+            await carregarLotes();
+        } else {
+            alert((r && r.dados && r.dados.erro) || 'Erro ao avançar lote.');
+        }
+    }
+
+
+
+    function fecharModalLote() {
+        document.getElementById('modalLote').classList.remove('aberto');
+    }
+
+    // Painel de lotes visível para todos — carregarLotes busca todos os lotes ativos
+    carregarLotes();
+    setInterval(carregarLotes, 30000);
+
+    // Badge de dúvidas pendentes só para admin/sac
+    if (['admin','sac'].includes(u?.perfil)) {
+        carregarDuvidasPendentes();
+        setInterval(carregarDuvidasPendentes, 30000);
+    }
+
+    // Badge de dúvidas pendentes para o SAC
+    async function carregarDuvidasPendentes() {
+        if (!['admin','sac'].includes(u?.perfil)) return;
+        const r = await api('GET', '/reclamacoes/duvidas/pendentes');
+        if (!r.ok) return;
+        const pendentes = r.dados.dados || r.dados || [];
+        const badge = document.getElementById('badge-duvidas-sac');
+        if (!badge) return;
+        if (pendentes.length) {
+            const lista = pendentes.map(p =>
+                `<a href="/pages/detalhe-reclamacao.html?id=${p.id}"
+                    style="display:block;color:#fff;font-weight:700;font-size:12px;margin-top:4px;text-decoration:underline">
+                    REC-${String(p.codigo).padStart(6,'0')} — ${p.cliente_nome}
+                </a>`
+            ).join('');
+            badge.innerHTML = `💬 ${pendentes.length} dúvida(s) aguardando resposta${lista}`;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
 </script>
 </body>
 </html>

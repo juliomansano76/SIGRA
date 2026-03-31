@@ -10,13 +10,16 @@ router.get('/', autenticar, async (req, res) => {
         const resultado = await db.query(`
             SELECT r.id, r.codigo, r.status, r.nossa_nf, r.lote, r.metragem, r.artigo,
                    r.descricao, r.criado_em, r.atualizado_em, r.concluida_em,
+                   r.lote_id,
                    c.nome AS cliente_nome,
                    u.nome AS criado_por_nome,
-                   aq.resultado AS resultado_analise
+                   aq.resultado AS resultado_analise,
+                   ld.codigo AS lote_codigo
             FROM reclamacoes r
             JOIN clientes c ON c.id = r.cliente_id
             JOIN usuarios u ON u.id = r.criado_por
             LEFT JOIN etapa_avaliacao_qualidade aq ON aq.reclamacao_id = r.id
+            LEFT JOIN lotes_devolucao ld ON ld.id = r.lote_id
             ORDER BY r.criado_em DESC
         `);
         res.json(resultado.rows);
@@ -25,22 +28,405 @@ router.get('/', autenticar, async (req, res) => {
     }
 });
 
-// Buscar uma reclamação completa (todas as etapas)
+// ============================================================
+// LOTES DE DEVOLUÇÃO
+// ============================================================
+
+// GET — listar lotes (com reclamações vinculadas)
+router.get('/lotes', autenticar, async (req, res) => {
+    try {
+        const lotes = await db.query(`
+            SELECT l.*,
+                u.nome AS criado_por_nome,
+                COUNT(lr.reclamacao_id) AS total_reclamacoes
+            FROM lotes_devolucao l
+            LEFT JOIN usuarios u ON u.id = l.criado_por
+            LEFT JOIN lote_reclamacoes lr ON lr.lote_id = l.id
+            GROUP BY l.id, u.nome
+            ORDER BY l.criado_em DESC
+        `);
+
+        // Buscar reclamações de cada lote
+        for (const lote of lotes.rows) {
+            const recs = await db.query(`
+                SELECT r.id, r.codigo, r.status,
+                       c.nome AS cliente_nome, r.nossa_nf, r.artigo
+                FROM lote_reclamacoes lr
+                JOIN reclamacoes r ON r.id = lr.reclamacao_id
+                LEFT JOIN clientes c ON c.id = r.cliente_id
+                WHERE lr.lote_id = $1
+                ORDER BY lr.adicionado_em ASC
+            `, [lote.id]);
+            lote.reclamacoes = recs.rows;
+        }
+
+        res.json({ ok: true, dados: lotes.rows });
+    } catch (err) {
+        console.error('[lotes/listar]', err);
+        res.status(500).json({ ok: false, erro: 'Erro ao listar lotes.' });
+    }
+});
+
+// GET — detalhe de um lote (com todos os campos de etapa e histórico)
+router.get('/lotes/:loteId', autenticar, async (req, res) => {
+    try {
+        const { loteId } = req.params;
+
+        const lote = await db.query(`
+            SELECT l.*,
+                   u.nome AS criado_por_nome
+            FROM lotes_devolucao l
+            LEFT JOIN usuarios u ON u.id = l.criado_por
+            WHERE l.id = $1
+        `, [loteId]);
+
+        if (!lote.rows.length) return res.status(404).json({ ok: false, erro: 'Lote não encontrado.' });
+
+        const recs = await db.query(`
+            SELECT r.id, r.codigo, r.status,
+                   c.nome AS cliente_nome, r.nossa_nf, r.artigo, r.descricao
+            FROM lote_reclamacoes lr
+            JOIN reclamacoes r ON r.id = lr.reclamacao_id
+            LEFT JOIN clientes c ON c.id = r.cliente_id
+            WHERE lr.lote_id = $1
+            ORDER BY lr.adicionado_em ASC
+        `, [loteId]);
+
+        // Busca cotações, romaneio e OF da primeira reclamação do lote (representativa)
+        let cotacoes = [], romaneioItens = [], numeroOf = null;
+        if (recs.rows.length) {
+            const primeiraRecId = recs.rows[0].id;
+            const [cots, romaneio, of] = await Promise.all([
+                db.query('SELECT * FROM cotacoes_frete WHERE reclamacao_id=$1 ORDER BY criado_em', [primeiraRecId]),
+                db.query('SELECT * FROM romaneio_itens WHERE reclamacao_id=$1 ORDER BY id', [primeiraRecId]),
+                db.query('SELECT numero_of FROM etapa_emitir_of WHERE reclamacao_id=$1 LIMIT 1', [primeiraRecId]),
+            ]);
+            cotacoes      = cots.rows;
+            romaneioItens = romaneio.rows;
+            numeroOf      = of.rows[0]?.numero_of || null;
+        }
+
+        // Histórico do lote — busca os eventos da primeira reclamação que foram gerados via lote
+        let historico = [];
+        if (recs.rows.length) {
+            const primeiraRecId = recs.rows[0].id;
+            const hist = await db.query(`
+                SELECT h.*, u.nome AS usuario_nome
+                FROM historico_status h
+                LEFT JOIN usuarios u ON u.id = h.usuario_id
+                WHERE h.reclamacao_id = $1
+                  AND h.observacao LIKE '%LOTE-%'
+                ORDER BY h.criado_em ASC
+            `, [primeiraRecId]);
+            historico = hist.rows;
+        }
+
+        res.json({
+            ok: true,
+            dados: {
+                ...lote.rows[0],
+                reclamacoes: recs.rows,
+                cotacoes,
+                historico,
+                romaneio_itens: romaneioItens,
+                numero_of: numeroOf,
+            }
+        });
+    } catch (err) {
+        console.error('[lotes/detalhe]', err);
+        res.status(500).json({ ok: false, erro: 'Erro ao buscar lote.' });
+    }
+});
+
+// POST — criar lote com reclamações
+router.post('/lotes', autenticar, permitir('admin', 'sac'), async (req, res) => {
+    try {
+        const { reclamacao_ids } = req.body;
+        if (!reclamacao_ids || !reclamacao_ids.length)
+            return res.status(400).json({ ok: false, erro: 'Informe ao menos uma reclamação.' });
+
+        // Criar o lote
+        const lote = await db.query(`
+            INSERT INTO lotes_devolucao (criado_por)
+            VALUES ($1) RETURNING *
+        `, [req.usuario.id]);
+        const loteId = lote.rows[0].id;
+        const loteCodigo = lote.rows[0].codigo;
+
+        const codigoFmt = `LOTE-${String(loteCodigo).padStart(6,'0')}`;
+
+        // Vincular reclamações, registrar histórico em cada uma
+        for (const recId of reclamacao_ids) {
+            const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [recId]);
+            const statusAnterior = recAtual.rows[0]?.status || null;
+
+            await db.query(
+                'INSERT INTO lote_reclamacoes (lote_id, reclamacao_id) VALUES ($1, $2)',
+                [loteId, recId]
+            );
+            await db.query(
+                `UPDATE reclamacoes SET status = 'encaminhando_devolucao_sac', lote_id = $1 WHERE id = $2`,
+                [loteId, recId]
+            );
+            await db.query(
+                `INSERT INTO historico_status (reclamacao_id, status_anterior, status_novo, usuario_id, observacao)
+                 VALUES ($1, $2, 'encaminhando_devolucao_sac', $3, $4)`,
+                [recId, statusAnterior, req.usuario.id, `Agrupada no ${codigoFmt}`]
+            );
+        }
+
+        res.status(201).json({ ok: true, dados: { ...lote.rows[0], codigo_fmt: codigoFmt } });
+    } catch (err) {
+        console.error('[lotes/criar]', err);
+        res.status(500).json({ ok: false, erro: 'Erro ao criar lote.' });
+    }
+});
+
+// PUT — avançar status do lote (avança todas as reclamações junto)
+router.put('/lotes/:loteId/status', autenticar, async (req, res) => {
+    try {
+        const { loteId } = req.params;
+        const { status, ...campos } = req.body;
+
+        const statusValidos = [
+            'encaminhando_devolucao_sac',
+            'encaminhando_devolucao_conferindo_nf',
+            'encaminhando_devolucao_conferindo_nf_fiscal',
+            'encaminhando_devolucao_sac_solicitar_coleta',
+            'encaminhando_devolucao_aguardando_chegada_material',
+            'encaminhando_devolucao_aguardando_revisao',
+            'encaminhando_devolucao_aguardando_of',
+            'encaminhando_devolucao_aguardando_conferencia_material',
+            'encaminhando_devolucao_aguardando_correcao_nf_cliente',
+            'gerando_credito_sac',
+            'aguardando_aprovacao_financeiro',
+            'aguardando_encerramento_comercial',
+            'concluido'
+        ];
+        if (!statusValidos.includes(status))
+            return res.status(400).json({ ok: false, erro: 'Status inválido.' });
+
+        // Montar campos extras para salvar no lote
+        const setClauses = ['status = $1'];
+        const vals = [status];
+        let idx = 2;
+        const camposPermitidos = [
+            'quantidade_confirmada',
+            'transportadora',
+            'nf_cliente_url',
+            'nfs_cliente_urls',
+            'nf_coleta',
+            'data_coleta',
+            'data_prevista_chegada',
+            'observacoes_nf',
+            'romaneio_nf_ok',
+            'descricao_conferencia',
+            'nfs_despacho',
+            'valor_credito',
+            'tipo_credito',
+            'descricao_credito',
+            'contato_cliente',
+        ];
+        for (const campo of camposPermitidos) {
+            if (campos[campo] !== undefined) {
+                setClauses.push(`${campo} = $${idx++}`);
+                vals.push(campos[campo]);
+            }
+        }
+        if (status === 'concluido') {
+            setClauses.push(`concluido_em = NOW()`);
+        }
+        vals.push(loteId);
+
+        const lote = await db.query(
+            `UPDATE lotes_devolucao SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING *`,
+            vals
+        );
+        if (!lote.rows.length) return res.status(404).json({ ok: false, erro: 'Lote não encontrado.' });
+
+        // Avançar todas as reclamações vinculadas para o mesmo status
+        // Quando o lote conclui, as reclamações vão direto para concluida
+        const recStatus = status === 'concluido' ? 'concluida' : status;
+        const codigoLote = lote.rows[0].codigo;
+        const codigFmt = `LOTE-${String(codigoLote).padStart(6,'0')}`;
+
+        const descricaoStatus = {
+            encaminhando_devolucao_conferindo_nf:               'SAC informou NFs de despacho e escolheu transportadora',
+            encaminhando_devolucao_conferindo_nf_fiscal:        'SAC enviou NFs de devolução do cliente para conferência fiscal',
+            encaminhando_devolucao_sac_solicitar_coleta:        'Fiscal aprovou as NFs de devolução do cliente',
+            encaminhando_devolucao_aguardando_chegada_material: 'SAC solicitou coleta do material',
+            encaminhando_devolucao_aguardando_revisao:          'Expedição confirmou recebimento do material',
+            encaminhando_devolucao_aguardando_conferencia_material: 'Revisão concluiu o romaneio do material',
+            encaminhando_devolucao_aguardando_correcao_nf_cliente:  'Fiscal reprovou o romaneio — aguardando correção com cliente',
+            encaminhando_devolucao_aguardando_of:               'Fiscal aprovou o romaneio — aguardando emissão de OF pelo PCP',
+            gerando_credito_sac:                                'PCP emitiu a Ordem de Fabricação',
+            aguardando_aprovacao_financeiro:                    'SAC definiu forma de crédito com o cliente',
+            aguardando_encerramento_comercial:                  'Financeiro tomou ciência do crédito',
+            concluido:                                          'Comercial encerrou o lote',
+        };
+        const descObs = descricaoStatus[status]
+            ? `${descricaoStatus[status]} — via ${codigFmt}`
+            : `Avanço via ${codigFmt}`;
+
+        const recsVinculadas = await db.query(
+            'SELECT id, status FROM reclamacoes WHERE lote_id = $1', [loteId]
+        );
+        for (const rec of recsVinculadas.rows) {
+            if (status === 'concluido') {
+                // Encerra a reclamação completamente
+                await db.query(
+                    'UPDATE reclamacoes SET status=$1, concluida_em=NOW(), atualizado_em=NOW() WHERE id=$2',
+                    ['concluida', rec.id]
+                );
+                // Cria registro de encerramento se não existir
+                const encExiste = await db.query('SELECT id FROM etapa_encerramento WHERE reclamacao_id=$1', [rec.id]);
+                if (!encExiste.rows.length) {
+                    await db.query(
+                        'INSERT INTO etapa_encerramento (reclamacao_id, usuario_id, concluido_em) VALUES ($1,$2,NOW())',
+                        [rec.id, req.usuario.id]
+                    );
+                }
+            } else {
+                await db.query(
+                    'UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
+                    [recStatus, rec.id]
+                );
+            }
+            await db.query(
+                `INSERT INTO historico_status (reclamacao_id, status_anterior, status_novo, usuario_id, observacao)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [rec.id, rec.status, recStatus, req.usuario.id, descObs]
+            );
+        }
+
+        // Se avançou para "conferindo_nf_fiscal" (SAC enviou NF), salva a URL na primeira reclamação
+        if (status === 'encaminhando_devolucao_conferindo_nf_fiscal' && campos.nf_cliente_url) {
+            if (recsVinculadas.rows.length) {
+                const primeiraRecId = recsVinculadas.rows[0].id;
+                const existe = await db.query(
+                    'SELECT id FROM etapa_encaminhar_devolucao WHERE reclamacao_id=$1', [primeiraRecId]
+                );
+                if (existe.rows.length) {
+                    await db.query(
+                        `UPDATE etapa_encaminhar_devolucao SET nf_cliente_url=$1, nf_cliente_recebida_em=NOW(), salvo_em=NOW() WHERE reclamacao_id=$2`,
+                        [campos.nf_cliente_url, primeiraRecId]
+                    );
+                } else {
+                    await db.query(
+                        `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, nf_cliente_url, usuario_id, salvo_em) VALUES ($1,$2,$3,NOW())`,
+                        [primeiraRecId, campos.nf_cliente_url, req.usuario.id]
+                    );
+                }
+            }
+        }
+
+        // Se avançou para "solicitar_coleta" (NF aprovada), salva dados de devolução na primeira reclamação
+        if (status === 'encaminhando_devolucao_sac_solicitar_coleta' && campos.quantidade_confirmada) {
+            if (recsVinculadas.rows.length) {
+                const primeiraRecId = recsVinculadas.rows[0].id;
+                const existe = await db.query(
+                    'SELECT id FROM etapa_encaminhar_devolucao WHERE reclamacao_id=$1', [primeiraRecId]
+                );
+                if (existe.rows.length) {
+                    await db.query(
+                        `UPDATE etapa_encaminhar_devolucao SET quantidade_confirmada=$1, transportadora_escolhida=$2, salvo_em=NOW() WHERE reclamacao_id=$3`,
+                        [campos.quantidade_confirmada, campos.transportadora || null, primeiraRecId]
+                    );
+                } else {
+                    await db.query(
+                        `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, quantidade_confirmada, transportadora_escolhida, usuario_id, salvo_em) VALUES ($1,$2,$3,$4,NOW())`,
+                        [primeiraRecId, campos.quantidade_confirmada, campos.transportadora || null, req.usuario.id]
+                    );
+                }
+            }
+        }
+
+        // Se avançou para "aguardando_chegada_material" (coleta confirmada), salva dados da coleta
+        if (status === 'encaminhando_devolucao_aguardando_chegada_material' && campos.data_coleta) {
+            if (recsVinculadas.rows.length) {
+                const primeiraRecId = recsVinculadas.rows[0].id;
+                const existe = await db.query(
+                    'SELECT id FROM etapa_solicitar_coleta WHERE reclamacao_id=$1', [primeiraRecId]
+                );
+                if (existe.rows.length) {
+                    await db.query(
+                        `UPDATE etapa_solicitar_coleta SET transportadora=$1, nf_coleta=$2, data_coleta=$3, data_prevista_chegada=$4, salvo_em=NOW(), concluido_em=NOW() WHERE reclamacao_id=$5`,
+                        [campos.transportadora || null, campos.nf_coleta || null, campos.data_coleta, campos.data_prevista_chegada || null, primeiraRecId]
+                    );
+                } else {
+                    await db.query(
+                        `INSERT INTO etapa_solicitar_coleta (reclamacao_id, transportadora, nf_coleta, data_coleta, data_prevista_chegada, usuario_id, salvo_em, concluido_em) VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())`,
+                        [primeiraRecId, campos.transportadora || null, campos.nf_coleta || null, campos.data_coleta, campos.data_prevista_chegada || null, req.usuario.id]
+                    );
+                }
+            }
+        }
+
+        res.json({ ok: true, dados: lote.rows[0] });
+    } catch (err) {
+        console.error('[lotes/status]', err);
+        res.status(500).json({ ok: false, erro: 'Erro ao atualizar lote.' });
+    }
+});
+
+// PUT — salvar campos do lote sem avançar status (rascunho)
+router.put('/lotes/:loteId/dados', autenticar, async (req, res) => {
+    try {
+        const { loteId } = req.params;
+        const camposPermitidos = [
+            'quantidade_confirmada',
+            'transportadora',
+            'nf_cliente_url',
+            'nfs_cliente_urls',
+            'nf_coleta',
+            'data_coleta',
+            'data_prevista_chegada',
+            'observacoes_nf',
+            'romaneio_nf_ok',
+            'descricao_conferencia',
+            'nfs_despacho',
+        ];
+        const setClauses = [];
+        const vals = [];
+        let idx = 1;
+        for (const campo of camposPermitidos) {
+            if (req.body[campo] !== undefined) {
+                setClauses.push(`${campo} = $${idx++}`);
+                vals.push(req.body[campo]);
+            }
+        }
+        if (!setClauses.length) return res.status(400).json({ ok: false, erro: 'Nenhum campo informado.' });
+        vals.push(loteId);
+        const r = await db.query(
+            `UPDATE lotes_devolucao SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING *`,
+            vals
+        );
+        res.json({ ok: true, dados: r.rows[0] });
+    } catch (err) {
+        console.error('[lotes/dados]', err);
+        res.status(500).json({ ok: false, erro: 'Erro ao salvar dados do lote.' });
+    }
+});
+
+// ============================================================
+// RECLAMAÇÃO — GET detalhe completo
+// ============================================================
 router.get('/:id', autenticar, async (req, res) => {
     try {
         const { id } = req.params;
 
         const rec = await db.query(`
-            SELECT r.*, c.nome AS cliente_nome, u.nome AS criado_por_nome
+            SELECT r.*, c.nome AS cliente_nome, u.nome AS criado_por_nome,
+                   l.codigo AS lote_codigo
             FROM reclamacoes r
             JOIN clientes c ON c.id = r.cliente_id
             JOIN usuarios u ON u.id = r.criado_por
+            LEFT JOIN lotes_devolucao l ON l.id = r.lote_id
             WHERE r.id = $1
         `, [id]);
 
         if (!rec.rows.length) return res.status(404).json({ erro: 'Reclamação não encontrada.' });
 
-        // Busca todas as etapas em paralelo
         const [arquivos, historico, avaliacao, direcionamento,
                visita, devolucao, cotacoes, confNF, coleta,
                recebimento, revisao, of, confMaterial, credito,
@@ -73,7 +459,7 @@ router.get('/:id', autenticar, async (req, res) => {
             ...rec.rows[0],
             arquivos:        arquivos.rows,
             historico:       historico.rows,
-            avaliacao:       avaliacao.rows[0] || null,   // <-- linha faltando
+            avaliacao:       avaliacao.rows[0] || null,
             av_pos_visita:   avPosVisita.rows[0] || null,
             direcionamento:  direcionamento.rows[0] || null,
             visita:          visita.rows[0] || null,
@@ -205,7 +591,6 @@ router.post('/:id/avaliacao/rascunho', autenticar, permitir('admin','qualidade')
             );
         }
 
-        // Salva áreas e defeitos (só atualiza se resultado for procedente)
         if (resultado === 'procedente' && Array.isArray(areas)) {
             await db.query('DELETE FROM reclamacao_areas WHERE reclamacao_id=$1', [id]);
             for (const area_id of areas) {
@@ -241,7 +626,6 @@ router.post('/:id/avaliacao', autenticar, permitir('admin','qualidade'), async (
 
         if (!resultado) return res.status(400).json({ erro: 'Resultado é obrigatório.' });
 
-        // Define próximo status conforme resultado
         const proximoStatus = {
             procedente:     'aguardando_comercial_procedente',
             improcedente:   'aguardando_comercial_procedente',
@@ -249,7 +633,6 @@ router.post('/:id/avaliacao', autenticar, permitir('admin','qualidade'), async (
         }[resultado];
         if (!proximoStatus) return res.status(400).json({ erro: 'Resultado inválido.' });
 
-        // Salva/atualiza etapa de avaliação como concluída
         const existe = await db.query(
             'SELECT id FROM etapa_avaliacao_qualidade WHERE reclamacao_id=$1', [id]
         );
@@ -265,7 +648,6 @@ router.post('/:id/avaliacao', autenticar, permitir('admin','qualidade'), async (
             );
         }
 
-        // Salva áreas e defeitos
         if (Array.isArray(areas)) {
             await db.query('DELETE FROM reclamacao_areas WHERE reclamacao_id=$1', [id]);
             for (const area_id of areas) {
@@ -285,13 +667,11 @@ router.post('/:id/avaliacao', autenticar, permitir('admin','qualidade'), async (
             }
         }
 
-        // Avança o status da reclamação
         await db.query(
             'UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
             [proximoStatus, id]
         );
 
-        // Sincroniza itens do plano de ação na tabela dedicada
         if (plano_acao) {
             await db.query('DELETE FROM plano_acao_itens WHERE reclamacao_id=$1 AND avaliacao_tipo=$2', [id, 'avaliacao']);
             const linhas = plano_acao.split('\n').filter(l => l.trim());
@@ -316,7 +696,6 @@ router.post('/:id/avaliacao', autenticar, permitir('admin','qualidade'), async (
             }
         }
 
-        // Registra no histórico
         await db.query(
             'INSERT INTO historico_status (reclamacao_id, status_anterior, status_novo, usuario_id, observacao) VALUES ($1,$2,$3,$4,$5)',
             [id, 'aguardando_analise_qualidade', proximoStatus, req.usuario.id, `Avaliação concluída: ${resultado}.`]
@@ -387,11 +766,9 @@ router.post('/:id/direcionamento', autenticar, permitir('admin','comercial'), as
         }[decisao];
         if (!proximoStatus) return res.status(400).json({ erro: 'Decisão inválida.' });
 
-        // Busca status atual para histórico
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
 
-        // Salva/atualiza etapa de direcionamento como concluída
         const existe = await db.query(
             'SELECT id FROM etapa_direcionamento_comercial WHERE reclamacao_id=$1', [id]
         );
@@ -414,23 +791,18 @@ router.post('/:id/direcionamento', autenticar, permitir('admin','comercial'), as
             );
         }
 
-        // Se for visita técnica, limpa a etapa de visita anterior para permitir nova entrada
         if (visita_tecnica) {
             await db.query(
-                `UPDATE etapa_visita_tecnica
-                 SET concluido_em=NULL, salvo_em=NOW()
-                 WHERE reclamacao_id=$1`,
+                `UPDATE etapa_visita_tecnica SET concluido_em=NULL, salvo_em=NOW() WHERE reclamacao_id=$1`,
                 [id]
             );
         }
 
-        // Avança status
         await db.query(
             'UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
             [proximoStatus, id]
         );
 
-        // Registra no histórico
         const obsHist = {
             devolucao:      'Comercial direcionou para Devolução do Material.',
             credito:        'Comercial direcionou para Geração de Crédito.',
@@ -482,7 +854,7 @@ router.post('/:id/visita/rascunho', autenticar, permitir('admin','qualidade'), a
     }
 });
 
-// Concluir visita técnica (avança para 2ª avaliação da qualidade)
+// Concluir visita técnica
 router.post('/:id/visita', autenticar, permitir('admin','qualidade'), async (req, res) => {
     try {
         const { data_visita, hora_visita, responsavel_cliente, descricao } = req.body;
@@ -513,7 +885,6 @@ router.post('/:id/visita', autenticar, permitir('admin','qualidade'), async (req
             );
         }
 
-        // Avança para 2ª avaliação da qualidade
         const proximoStatus = 'aguardando_analise_qualidade_pos_visita';
         await db.query(
             'UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
@@ -587,7 +958,7 @@ router.post('/:id/avaliacao-pos-visita', autenticar, permitir('admin','qualidade
         if (!resultado) return res.status(400).json({ erro: 'Resultado é obrigatório.' });
 
         const proximoStatus = 'aguardando_comercial_procedente';
-        
+
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
 
@@ -629,7 +1000,6 @@ router.post('/:id/avaliacao-pos-visita', autenticar, permitir('admin','qualidade
             [proximoStatus, id]
         );
 
-        // Sincroniza itens do plano na tabela dedicada
         if (plano_acao) {
             await db.query('DELETE FROM plano_acao_itens WHERE reclamacao_id=$1 AND avaliacao_tipo=$2', [id, 'avaliacao_pos_visita']);
             const linhas = plano_acao.split('\n').filter(l => l.trim());
@@ -707,28 +1077,25 @@ router.post('/:id/encerrar', autenticar, permitir('admin','comercial','qualidade
     }
 });
 
-
 // ============================================================
 // FLUXO DE DEVOLUÇÃO
 // ============================================================
 
-// --- ETAPA SAC: Confirmar quantidade e cotar fretes ---
-
 router.post('/:id/devolucao/rascunho', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
-        const { quantidade_confirmada, observacoes, cotacoes } = req.body;
+        const { quantidade_confirmada, observacoes, cotacoes, nfs_despacho } = req.body;
         const { id } = req.params;
 
         const existe = await db.query('SELECT id FROM etapa_encaminhar_devolucao WHERE reclamacao_id=$1', [id]);
         if (existe.rows.length > 0) {
             await db.query(
-                `UPDATE etapa_encaminhar_devolucao SET quantidade_confirmada=$1, observacoes=$2, salvo_em=NOW() WHERE reclamacao_id=$3`,
-                [quantidade_confirmada || null, observacoes || null, id]
+                `UPDATE etapa_encaminhar_devolucao SET quantidade_confirmada=$1, observacoes=$2, nfs_despacho=$3, salvo_em=NOW() WHERE reclamacao_id=$4`,
+                [quantidade_confirmada || null, observacoes || null, nfs_despacho || null, id]
             );
         } else {
             await db.query(
-                `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, quantidade_confirmada, observacoes, usuario_id, salvo_em) VALUES ($1,$2,$3,$4,NOW())`,
-                [id, quantidade_confirmada || null, observacoes || null, req.usuario.id]
+                `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, quantidade_confirmada, observacoes, nfs_despacho, usuario_id, salvo_em) VALUES ($1,$2,$3,$4,$5,NOW())`,
+                [id, quantidade_confirmada || null, observacoes || null, nfs_despacho || null, req.usuario.id]
             );
         }
 
@@ -753,7 +1120,7 @@ router.post('/:id/devolucao/rascunho', autenticar, permitir('admin','sac'), asyn
 
 router.post('/:id/devolucao/confirmar', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
-        const { quantidade_confirmada, observacoes, cotacoes, transportadora_escolhida } = req.body;
+        const { quantidade_confirmada, observacoes, cotacoes, transportadora_escolhida, nfs_despacho } = req.body;
         const { id } = req.params;
 
         if (!quantidade_confirmada) return res.status(400).json({ erro: 'Quantidade é obrigatória.' });
@@ -765,13 +1132,13 @@ router.post('/:id/devolucao/confirmar', autenticar, permitir('admin','sac'), asy
         const existe = await db.query('SELECT id FROM etapa_encaminhar_devolucao WHERE reclamacao_id=$1', [id]);
         if (existe.rows.length > 0) {
             await db.query(
-                `UPDATE etapa_encaminhar_devolucao SET quantidade_confirmada=$1, transportadora_escolhida=$2, observacoes=$3, usuario_id=$4, salvo_em=NOW() WHERE reclamacao_id=$5`,
-                [quantidade_confirmada, transportadora_escolhida, observacoes || null, req.usuario.id, id]
+                `UPDATE etapa_encaminhar_devolucao SET quantidade_confirmada=$1, transportadora_escolhida=$2, observacoes=$3, nfs_despacho=$4, usuario_id=$5, salvo_em=NOW() WHERE reclamacao_id=$6`,
+                [quantidade_confirmada, transportadora_escolhida, observacoes || null, nfs_despacho || null, req.usuario.id, id]
             );
         } else {
             await db.query(
-                `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, quantidade_confirmada, transportadora_escolhida, observacoes, usuario_id, salvo_em) VALUES ($1,$2,$3,$4,$5,NOW())`,
-                [id, quantidade_confirmada, transportadora_escolhida, observacoes || null, req.usuario.id]
+                `INSERT INTO etapa_encaminhar_devolucao (reclamacao_id, quantidade_confirmada, transportadora_escolhida, observacoes, nfs_despacho, usuario_id, salvo_em) VALUES ($1,$2,$3,$4,$5,$6,NOW())`,
+                [id, quantidade_confirmada, transportadora_escolhida, observacoes || null, nfs_despacho || null, req.usuario.id]
             );
         }
 
@@ -801,8 +1168,6 @@ router.post('/:id/devolucao/confirmar', autenticar, permitir('admin','sac'), asy
     }
 });
 
-// --- ETAPA SAC: Receber NF do cliente e enviar para Fiscal ---
-
 router.post('/:id/devolucao/nf', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
         const { nf_cliente_url, observacoes_nf } = req.body;
@@ -831,8 +1196,6 @@ router.post('/:id/devolucao/nf', autenticar, permitir('admin','sac'), async (req
         res.status(500).json({ erro: 'Erro ao registrar NF.' });
     }
 });
-
-// --- ETAPA FISCAL: Conferir NF ---
 
 router.post('/:id/devolucao/conferencia-nf', autenticar, permitir('admin','fiscal'), async (req, res) => {
     try {
@@ -868,8 +1231,6 @@ router.post('/:id/devolucao/conferencia-nf', autenticar, permitir('admin','fisca
     }
 });
 
-// --- ETAPA SAC: Corrigir NF e reenviar ---
-
 router.post('/:id/devolucao/corrigir-nf', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
         const { nf_cliente_url, observacoes_nf } = req.body;
@@ -898,8 +1259,6 @@ router.post('/:id/devolucao/corrigir-nf', autenticar, permitir('admin','sac'), a
         res.status(500).json({ erro: 'Erro ao reenviar NF.' });
     }
 });
-
-// --- ETAPA SAC: Solicitar coleta ---
 
 router.post('/:id/devolucao/coleta/rascunho', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
@@ -964,12 +1323,10 @@ router.post('/:id/devolucao/coleta', autenticar, permitir('admin','sac'), async 
     }
 });
 
-
 // ============================================================
-// FLUXO PÓS-COLETA: Expedição → Revisão → PCP → Fiscal → SAC → Comercial
+// FLUXO PÓS-COLETA: Expedição → Revisão → Fiscal
 // ============================================================
 
-// --- ETAPA EXPEDIÇÃO: Receber material ---
 router.post('/:id/receber-material', autenticar, permitir('admin','expedicao'), async (req, res) => {
     try {
         const { observacoes, data_recebimento } = req.body;
@@ -1006,7 +1363,6 @@ router.post('/:id/receber-material', autenticar, permitir('admin','expedicao'), 
     }
 });
 
-// --- ETAPA REVISÃO: Revisar material e preencher romaneio ---
 router.post('/:id/revisao/rascunho', autenticar, permitir('admin','revisao'), async (req, res) => {
     try {
         const { descricao, revisora, itens } = req.body;
@@ -1028,10 +1384,10 @@ router.post('/:id/revisao/rascunho', autenticar, permitir('admin','revisao'), as
         if (Array.isArray(itens)) {
             await db.query('DELETE FROM romaneio_itens WHERE reclamacao_id=$1', [id]);
             for (const item of itens) {
-                if (item.codigo_produto) {
+                if (item.codigo_produto || item.numero_nf) {
                     await db.query(
-                        `INSERT INTO romaneio_itens (reclamacao_id, codigo_produto, qualidade, metros) VALUES ($1,$2,$3,$4)`,
-                        [id, item.codigo_produto, item.qualidade || null, item.metros || null]
+                        `INSERT INTO romaneio_itens (reclamacao_id, numero_nf, codigo_produto, qualidade, metros) VALUES ($1,$2,$3,$4,$5)`,
+                        [id, item.numero_nf || null, item.codigo_produto || null, item.qualidade || null, item.metros || null]
                     );
                 }
             }
@@ -1049,9 +1405,8 @@ router.post('/:id/revisao', autenticar, permitir('admin','revisao'), async (req,
         const { descricao, revisora, itens } = req.body;
         const { id } = req.params;
 
-        if (!revisora) return res.status(400).json({ erro: 'Informe a revisora.' });
-        if (!Array.isArray(itens) || itens.filter(i => i.codigo_produto).length === 0)
-            return res.status(400).json({ erro: 'Preencha ao menos um item no romaneio.' });
+        if (!revisora) return res.status(400).json({ erro: 'Revisora é obrigatória.' });
+        if (!Array.isArray(itens) || !itens.length) return res.status(400).json({ erro: 'Adicione ao menos um item no romaneio.' });
 
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
@@ -1071,10 +1426,10 @@ router.post('/:id/revisao', autenticar, permitir('admin','revisao'), async (req,
 
         await db.query('DELETE FROM romaneio_itens WHERE reclamacao_id=$1', [id]);
         for (const item of itens) {
-            if (item.codigo_produto) {
+            if (item.codigo_produto || item.numero_nf) {
                 await db.query(
-                    `INSERT INTO romaneio_itens (reclamacao_id, codigo_produto, qualidade, metros) VALUES ($1,$2,$3,$4)`,
-                    [id, item.codigo_produto, item.qualidade || null, item.metros || null]
+                    `INSERT INTO romaneio_itens (reclamacao_id, numero_nf, codigo_produto, qualidade, metros) VALUES ($1,$2,$3,$4,$5)`,
+                    [id, item.numero_nf || null, item.codigo_produto || null, item.qualidade || null, item.metros || null]
                 );
             }
         }
@@ -1093,7 +1448,6 @@ router.post('/:id/revisao', autenticar, permitir('admin','revisao'), async (req,
     }
 });
 
-// --- ETAPA PCP: Emitir OF ---
 router.post('/:id/of', autenticar, permitir('admin','pcp'), async (req, res) => {
     try {
         const { numero_of } = req.body;
@@ -1131,7 +1485,6 @@ router.post('/:id/of', autenticar, permitir('admin','pcp'), async (req, res) => 
     }
 });
 
-// --- ETAPA FISCAL: Conferir NF x Romaneio ---
 router.post('/:id/conferencia-material', autenticar, permitir('admin','fiscal'), async (req, res) => {
     try {
         const { romaneio_nf_ok, descricao, valor_credito } = req.body;
@@ -1159,7 +1512,6 @@ router.post('/:id/conferencia-material', autenticar, permitir('admin','fiscal'),
 
         let proximoStatus, obsHist;
         if (romaneio_nf_ok) {
-            // Salva o crédito gerado pelo fiscal
             const existeCredito = await db.query('SELECT id FROM etapa_gerar_credito WHERE reclamacao_id=$1', [id]);
             if (existeCredito.rows.length > 0) {
                 await db.query(
@@ -1192,7 +1544,6 @@ router.post('/:id/conferencia-material', autenticar, permitir('admin','fiscal'),
     }
 });
 
-// --- ETAPA SAC: Tratar divergência com cliente (NF reprovada pelo Fiscal) ---
 router.post('/:id/tratar-divergencia', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
         const { observacoes, nf_nova_url } = req.body;
@@ -1203,7 +1554,6 @@ router.post('/:id/tratar-divergencia', autenticar, permitir('admin','sac'), asyn
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
 
-        // Atualiza a NF na etapa de devolução
         await db.query(
             `UPDATE etapa_encaminhar_devolucao SET nf_cliente_url=$1, observacoes_nf=$2, nf_cliente_recebida_em=NOW(), salvo_em=NOW() WHERE reclamacao_id=$3`,
             [nf_nova_url, observacoes || null, id]
@@ -1223,7 +1573,10 @@ router.post('/:id/tratar-divergencia', autenticar, permitir('admin','sac'), asyn
     }
 });
 
-// --- FLUXO CRÉDITO DIRETO: SAC envia NF do cliente para o Fiscal ---
+// ============================================================
+// FLUXO DE CRÉDITO DIRETO
+// ============================================================
+
 router.post('/:id/credito/nf', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
         const { nf_cliente_url, observacoes } = req.body;
@@ -1234,7 +1587,6 @@ router.post('/:id/credito/nf', autenticar, permitir('admin','sac'), async (req, 
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
 
-        // Salva na etapa de devolução (reutilizando a estrutura existente)
         const existe = await db.query('SELECT id FROM etapa_encaminhar_devolucao WHERE reclamacao_id=$1', [id]);
         if (existe.rows.length > 0) {
             await db.query(
@@ -1262,7 +1614,6 @@ router.post('/:id/credito/nf', autenticar, permitir('admin','sac'), async (req, 
     }
 });
 
-// --- FLUXO CRÉDITO DIRETO: Fiscal informa valor do crédito ---
 router.post('/:id/credito/fiscal', autenticar, permitir('admin','fiscal'), async (req, res) => {
     try {
         const { valor_credito, observacoes } = req.body;
@@ -1300,8 +1651,6 @@ router.post('/:id/credito/fiscal', autenticar, permitir('admin','fiscal'), async
     }
 });
 
-
-// --- FLUXO CRÉDITO DIRETO: Fiscal reprova NF ---
 router.post('/:id/credito/fiscal-reprovar', autenticar, permitir('admin','fiscal'), async (req, res) => {
     try {
         const { motivo } = req.body;
@@ -1312,7 +1661,6 @@ router.post('/:id/credito/fiscal-reprovar', autenticar, permitir('admin','fiscal
         const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
         const statusAnterior = recAtual.rows[0]?.status;
 
-        // Salva o motivo no histórico para o SAC visualizar
         const proximoStatus = 'encaminhando_devolucao_aguardando_correcao_nf_cliente';
         await db.query('UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2', [proximoStatus, id]);
         await db.query(
@@ -1329,7 +1677,7 @@ router.post('/:id/credito/fiscal-reprovar', autenticar, permitir('admin','fiscal
 
 router.post('/:id/credito/forma', autenticar, permitir('admin','sac'), async (req, res) => {
     try {
-        const { tipo_credito, descricao } = req.body;
+        const { tipo_credito, descricao, contato_cliente } = req.body;
         const { id } = req.params;
 
         if (!tipo_credito) return res.status(400).json({ erro: 'Selecione a forma de crédito.' });
@@ -1340,13 +1688,13 @@ router.post('/:id/credito/forma', autenticar, permitir('admin','sac'), async (re
         const existe = await db.query('SELECT id FROM etapa_definir_credito WHERE reclamacao_id=$1', [id]);
         if (existe.rows.length > 0) {
             await db.query(
-                `UPDATE etapa_definir_credito SET tipo_credito=$1, descricao=$2, usuario_id=$3, salvo_em=NOW(), concluido_em=NOW() WHERE reclamacao_id=$4`,
-                [tipo_credito, descricao || null, req.usuario.id, id]
+                `UPDATE etapa_definir_credito SET tipo_credito=$1, descricao=$2, contato_cliente=$3, usuario_id=$4, salvo_em=NOW(), concluido_em=NOW() WHERE reclamacao_id=$5`,
+                [tipo_credito, descricao || null, contato_cliente || null, req.usuario.id, id]
             );
         } else {
             await db.query(
-                `INSERT INTO etapa_definir_credito (reclamacao_id, tipo_credito, descricao, usuario_id, salvo_em, concluido_em) VALUES ($1,$2,$3,$4,NOW(),NOW())`,
-                [id, tipo_credito, descricao || null, req.usuario.id]
+                `INSERT INTO etapa_definir_credito (reclamacao_id, tipo_credito, descricao, contato_cliente, usuario_id, salvo_em, concluido_em) VALUES ($1,$2,$3,$4,$5,NOW(),NOW())`,
+                [id, tipo_credito, descricao || null, contato_cliente || null, req.usuario.id]
             );
         }
 
@@ -1364,7 +1712,6 @@ router.post('/:id/credito/forma', autenticar, permitir('admin','sac'), async (re
     }
 });
 
-// --- FLUXO CRÉDITO DIRETO: Financeiro toma ciência e encaminha para encerramento ---
 router.post('/:id/credito/financeiro', autenticar, permitir('admin','financeiro'), async (req, res) => {
     try {
         const { observacoes } = req.body;
@@ -1387,19 +1734,21 @@ router.post('/:id/credito/financeiro', autenticar, permitir('admin','financeiro'
     }
 });
 
-// --- COMENTÁRIOS ---
+// ============================================================
+// COMENTÁRIOS
+// ============================================================
+
 router.post('/:id/comentarios', autenticar, async (req, res) => {
     try {
-        const { texto } = req.body;
         const { id } = req.params;
-        if (!texto || !texto.trim()) return res.status(400).json({ erro: 'O comentário não pode estar vazio.' });
-        const result = await db.query(
-            `INSERT INTO comentarios_reclamacao (reclamacao_id, usuario_id, texto, criado_em)
-             VALUES ($1, $2, $3, NOW()) RETURNING *`,
+        const { texto } = req.body;
+        if (!texto?.trim()) return res.status(400).json({ erro: 'Texto é obrigatório.' });
+
+        const r = await db.query(
+            `INSERT INTO comentarios_reclamacao (reclamacao_id, usuario_id, texto) VALUES ($1,$2,$3) RETURNING *`,
             [id, req.usuario.id, texto.trim()]
         );
-        const comentario = result.rows[0];
-        // Busca nome do autor para retornar completo
+        const comentario = r.rows[0];
         const usuario = await db.query('SELECT nome, perfil FROM usuarios WHERE id=$1', [req.usuario.id]);
         res.json({ ...comentario, autor_nome: usuario.rows[0]?.nome, autor_perfil: usuario.rows[0]?.perfil });
     } catch (err) {
@@ -1411,7 +1760,6 @@ router.post('/:id/comentarios', autenticar, async (req, res) => {
 router.delete('/:id/comentarios/:comentarioId', autenticar, async (req, res) => {
     try {
         const { id, comentarioId } = req.params;
-        // Só o próprio autor ou admin pode excluir
         const c = await db.query('SELECT usuario_id FROM comentarios_reclamacao WHERE id=$1 AND reclamacao_id=$2', [comentarioId, id]);
         if (!c.rows.length) return res.status(404).json({ erro: 'Comentário não encontrado.' });
         if (c.rows[0].usuario_id !== req.usuario.id && req.usuario.perfil !== 'admin') {
@@ -1429,8 +1777,7 @@ router.delete('/:id/comentarios/:comentarioId', autenticar, async (req, res) => 
 // PLANO DE AÇÃO — ITENS
 // ============================================================
 
-// ATENÇÃO: rota estática DEVE vir antes de rotas com parâmetro /:id
-// GET overview — todos os itens pendentes/em andamento (para página de followup)
+// GET pendentes (rota estática — DEVE ficar antes de /:id)
 router.get('/plano-acao/pendentes', autenticar, permitir('admin','qualidade'), async (req, res) => {
     try {
         const { status } = req.query;
@@ -1454,26 +1801,23 @@ router.get('/plano-acao/pendentes', autenticar, permitir('admin','qualidade'), a
     } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao buscar pendências.' }); }
 });
 
-// GET todos os itens de uma reclamação
 router.get('/:id/plano-acao', autenticar, async (req, res) => {
     try {
         const { id } = req.params;
-        const r = await db.query(
-            `SELECT p.*, r.numero, r.descricao AS rec_descricao,
-                    c.nome AS cliente_nome
-             FROM plano_acao_itens p
-             JOIN reclamacoes r ON r.id = p.reclamacao_id
-             LEFT JOIN clientes c ON c.id = r.cliente_id
-             WHERE p.reclamacao_id = $1
-             ORDER BY p.criado_em ASC`,
-            [id]
-        );
-        res.json(r.rows);
+        const { tipo } = req.query;
+        let query = `SELECT p.*, r.codigo, r.descricao AS rec_descricao, c.nome AS cliente_nome
+                     FROM plano_acao_itens p
+                     JOIN reclamacoes r ON r.id = p.reclamacao_id
+                     LEFT JOIN clientes c ON c.id = r.cliente_id
+                     WHERE p.reclamacao_id = $1`;
+        const params = [id];
+        if (tipo) { query += ` AND p.avaliacao_tipo = $2`; params.push(tipo); }
+        query += ' ORDER BY p.criado_em ASC';
+        const r = await db.query(query, params);
+        res.json({ ok: true, dados: r.rows });
     } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao buscar plano.' }); }
 });
 
-// GET overview — todos os itens pendentes/em andamento (para página de followup)
-// POST — criar item do plano
 router.post('/:id/plano-acao', autenticar, permitir('admin','qualidade'), async (req, res) => {
     try {
         const { id } = req.params;
@@ -1488,7 +1832,6 @@ router.post('/:id/plano-acao', autenticar, permitir('admin','qualidade'), async 
     } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao criar item.' }); }
 });
 
-// PATCH — atualizar item (status, eficacia, prazo, observacao)
 router.patch('/:id/plano-acao/:itemId', autenticar, permitir('admin','qualidade'), async (req, res) => {
     try {
         const { itemId } = req.params;
@@ -1510,7 +1853,6 @@ router.patch('/:id/plano-acao/:itemId', autenticar, permitir('admin','qualidade'
     } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao atualizar item.' }); }
 });
 
-// DELETE — remover item
 router.delete('/:id/plano-acao/:itemId', autenticar, permitir('admin','qualidade'), async (req, res) => {
     try {
         const { itemId } = req.params;
@@ -1519,18 +1861,17 @@ router.delete('/:id/plano-acao/:itemId', autenticar, permitir('admin','qualidade
     } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao remover item.' }); }
 });
 
+// ============================================================
+// ARQUIVOS — DELETE
+// ============================================================
 
-// DELETE — remover arquivo
 router.delete('/:id/arquivos/:arquivoId', autenticar, async (req, res) => {
     try {
         const { id, arquivoId } = req.params;
         const arq = await db.query('SELECT * FROM arquivos WHERE id=$1 AND reclamacao_id=$2', [arquivoId, id]);
         if (!arq.rows.length) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
 
-        // Remove do disco
         const caminho = arq.rows[0].nome_arquivo;
-        const fs = require('fs');
-        const path = require('path');
         const filePath = path.join(__dirname, '..', '..', 'uploads', id, caminho);
         try { fs.unlinkSync(filePath); } catch(e) { /* ignora se já não existir */ }
 
@@ -1542,4 +1883,112 @@ router.delete('/:id/arquivos/:arquivoId', autenticar, async (req, res) => {
     }
 });
 
+// ============================================================
+// DÚVIDAS AO SAC — chat por reclamação
+// ============================================================
+
+// GET — dúvidas pendentes para o SAC (DEVE vir ANTES de /:id/duvidas)
+router.get('/duvidas/pendentes', autenticar, permitir('admin','sac'), async (req, res) => {
+    try {
+        const r = await db.query(`
+            SELECT r.id, r.codigo, r.status,
+                   c.nome AS cliente_nome,
+                   COUNT(d.id) AS total_duvidas,
+                   MAX(d.criado_em) AS ultima_duvida_em
+            FROM reclamacoes r
+            JOIN clientes c ON c.id = r.cliente_id
+            LEFT JOIN duvidas_sac d ON d.reclamacao_id = r.id AND d.eh_resposta_sac = false
+            WHERE r.status = 'aguardando_complemento_sac'
+            GROUP BY r.id, r.codigo, r.status, c.nome
+            ORDER BY MAX(d.criado_em) ASC NULLS LAST
+        `);
+        res.json({ ok: true, dados: r.rows });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, erro: 'Erro ao buscar pendências.' });
+    }
+});
+
+// GET — listar mensagens do chat de uma reclamação
+router.get('/:id/duvidas', autenticar, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const r = await db.query(`
+            SELECT d.*, u.nome AS autor_nome, u.perfil AS autor_perfil
+            FROM duvidas_sac d
+            LEFT JOIN usuarios u ON u.id = d.usuario_id
+            WHERE d.reclamacao_id = $1
+            ORDER BY d.criado_em ASC
+        `, [id]);
+        res.json({ ok: true, dados: r.rows });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, erro: 'Erro ao buscar dúvidas.' });
+    }
+});
+
+// POST — enviar mensagem (qualquer perfil abre dúvida; SAC responde)
+router.post('/:id/duvidas', autenticar, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { mensagem } = req.body;
+        if (!mensagem?.trim()) return res.status(400).json({ ok: false, erro: 'Mensagem obrigatória.' });
+
+        const perfil  = req.usuario.perfil;
+        const ehSac   = ['admin','sac'].includes(perfil);
+
+        // Busca status atual da reclamação
+        const recAtual = await db.query('SELECT status FROM reclamacoes WHERE id=$1', [id]);
+        if (!recAtual.rows.length) return res.status(404).json({ ok: false, erro: 'Reclamação não encontrada.' });
+        const statusAtual = recAtual.rows[0].status;
+
+        // É resposta do SAC APENAS se: é SAC/admin E o status já é aguardando_complemento_sac
+        // Caso contrário, é abertura de dúvida (mesmo que seja admin)
+        const ehRespostaSac = ehSac && statusAtual === 'aguardando_complemento_sac';
+
+        // Insere a mensagem
+        const msg = await db.query(`
+            INSERT INTO duvidas_sac (reclamacao_id, usuario_id, mensagem, eh_resposta_sac, status_anterior)
+            VALUES ($1, $2, $3, $4, $5) RETURNING *
+        `, [id, req.usuario.id, mensagem.trim(), ehRespostaSac, statusAtual]);
+
+        if (!ehRespostaSac) {
+            // Abre dúvida: muda status para aguardando_complemento_sac (se já não estiver)
+            if (statusAtual !== 'aguardando_complemento_sac') {
+                await db.query('UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
+                    ['aguardando_complemento_sac', id]);
+                await db.query(`INSERT INTO historico_status (reclamacao_id, status_anterior, status_novo, usuario_id, observacao)
+                    VALUES ($1,$2,'aguardando_complemento_sac',$3,$4)`,
+                    [id, statusAtual, req.usuario.id, `Dúvida enviada ao SAC por ${req.usuario.nome} (${perfil}).`]);
+            }
+        } else {
+            // SAC responde: volta para o status anterior salvo na última dúvida aberta
+            const ultima = await db.query(`
+                SELECT status_anterior FROM duvidas_sac
+                WHERE reclamacao_id=$1 AND eh_resposta_sac=false
+                ORDER BY criado_em DESC LIMIT 1
+            `, [id]);
+            const statusVoltar = ultima.rows[0]?.status_anterior || statusAtual;
+            if (statusAtual === 'aguardando_complemento_sac' && statusVoltar !== 'aguardando_complemento_sac') {
+                await db.query('UPDATE reclamacoes SET status=$1, atualizado_em=NOW() WHERE id=$2',
+                    [statusVoltar, id]);
+                await db.query(`INSERT INTO historico_status (reclamacao_id, status_anterior, status_novo, usuario_id, observacao)
+                    VALUES ($1,'aguardando_complemento_sac',$2,$3,$4)`,
+                    [id, statusVoltar, req.usuario.id, 'SAC respondeu à dúvida. Retornando à fase anterior.']);
+            }
+        }
+
+        // Busca dados completos do autor para retornar
+        const usuario = await db.query('SELECT nome, perfil FROM usuarios WHERE id=$1', [req.usuario.id]);
+        res.json({
+            ok: true,
+            dados: { ...msg.rows[0], autor_nome: usuario.rows[0]?.nome, autor_perfil: usuario.rows[0]?.perfil }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, erro: 'Erro ao enviar mensagem.' });
+    }
+});
+
+// GET — dúvidas pendentes para o SAC (todas as reclamações com aguardando_complemento_sac)
 module.exports = router;

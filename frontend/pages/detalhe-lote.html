@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalhe do Lote — SIGRA</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .secao { margin-bottom: 24px; }
+        .secao-titulo { font-size: 13px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        /* Chat de dúvidas ao SAC */
+        .chat-container { display:flex; flex-direction:column; gap:10px; max-height:360px; overflow-y:auto; padding:4px 0; margin-bottom:12px; }
+        .chat-msg { display:flex; flex-direction:column; max-width:80%; }
+        .chat-msg.minha  { align-self:flex-end; align-items:flex-end; }
+        .chat-msg.deles  { align-self:flex-start; align-items:flex-start; }
+        .chat-msg.sac    { align-self:flex-start; align-items:flex-start; }
+        .chat-balao { padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; }
+        .chat-msg.minha  .chat-balao { background:#1a237e; color:#fff; border-bottom-right-radius:3px; }
+        .chat-msg.deles  .chat-balao { background:#f0f0f0; color:#333; border-bottom-left-radius:3px; }
+        .chat-msg.sac    .chat-balao { background:#e8f5e9; color:#1b5e20; border-bottom-left-radius:3px; }
+        .chat-meta { font-size:11px; color:#999; margin-top:3px; }
+        .chat-input-area { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+        .chat-input-area textarea { width:100%; box-sizing:border-box; border:1px solid #ddd; border-radius:8px; padding:10px 12px; font-size:13px; font-family:inherit; resize:vertical; outline:none; min-height:70px; }
+        .chat-input-area textarea:focus { border-color:#1a237e; }
+        .chat-input-area button { align-self:flex-end; }
+        .info-item label { display: block; font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+        .info-item span  { font-size: 14px; color: #333; }
+        .historico-linha { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+        .historico-linha:last-child { border: none; }
+        .historico-data { color: #999; white-space: nowrap; min-width: 140px; }
+        .etapa-ativa { border: 2px solid #2c2c2c !important; }
+        .etapa-concluida { border-left: 4px solid #2e7d32 !important; }
+        .etapa-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .upload-area { border: 2px dashed #ddd; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: #666; margin-top: 12px; transition: border 0.2s; }
+        .upload-area:hover { border-color: #2c2c2c; }
+        .rodape-fixo { position: fixed; bottom: 0; left: 240px; right: 0; background: white; border-top: 1px solid #eee; padding: 12px 32px; display: flex; gap: 8px; align-items: center; z-index: 50; }
+        .rodape-fixo .btn { height: 36px; padding: 0 16px; border-radius: 6px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; border: none; width: auto; }
+        .rodape-fixo .btn-voltar-pg { background: #fff; color: #4a5568; border: 1px solid #cbd5e0 !important; flex-shrink: 0; }
+        .rodape-fixo .btn-secondary { background: #4a5568; color: white; flex-shrink: 0; }
+        .rodape-fixo .btn-primary, .rodape-fixo .btn-success { background: #2f855a; color: white; flex: 1; }
+        .info-resultado { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+        .info-resultado.procedente   { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .info-resultado.improcedente { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .info-resultado.neutro       { background: #f5f5f5; color: #555; border: 1px solid #ddd; }
+        .radio-group { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+        .radio-item { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 10px 16px; border: 2px solid #eee; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+        .radio-item:hover { border-color: #2c2c2c; }
+        .radio-item input { width: 16px; height: 16px; cursor: pointer; }
+        .plano-acao-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+        .plano-acao-table th { background:#f5f5f5; padding:8px 10px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; font-size:12px; }
+        .plano-acao-table td { padding:6px 8px; border:1px solid #e0e0e0; vertical-align:top; }
+        .cotacoes-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+        .cotacoes-table th { background:#f5f5f5; padding:8px 10px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; font-size:12px; }
+        .cotacoes-table td { padding:6px 8px; border:1px solid #e0e0e0; vertical-align:top; }
+        .cotacoes-table input { width:100%; border:none; background:transparent; font-size:13px; font-family:inherit; outline:none; padding:2px 4px; }
+        .btn-add-linha { font-size:12px; color:#2f855a; background:none; border:1px dashed #2f855a; border-radius:6px; padding:4px 12px; cursor:pointer; margin-top:8px; }
+        .btn-del-linha { background:none; border:none; color:#c62828; cursor:pointer; font-size:14px; padding:2px 6px; }
+        /* Tabela de NFs */
+        .nf-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+        .nf-table th { background:#f5f5f5; padding:8px 10px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; font-size:12px; }
+        .nf-table td { padding:4px 6px; border:1px solid #e0e0e0; vertical-align:middle; }
+        .nf-table input { width:100%; border:none; background:transparent; font-size:13px; font-family:inherit; outline:none; padding:2px 4px; }
+        .nf-table input:focus { background:#f9f9f9; border-radius:3px; }
+        .nf-table input[type=number] { text-align:right; }
+        .nf-totais { display:flex; gap:24px; margin-top:10px; padding:10px 14px; background:#e8eaf6; border-radius:8px; font-size:13px; }
+        .nf-totais span { color:#1a237e; font-weight:700; }
+        .nf-totais label { color:#555; font-size:12px; margin-right:4px; }
+        /* Bloco de reclamações do lote */
+        .rec-lote-item { display:flex; align-items:center; gap:12px; padding:8px 12px; border:1px solid #e8eaf6; border-radius:8px; margin-bottom:6px; font-size:13px; }
+        .rec-lote-codigo { font-weight:700; color:#1a237e; min-width:90px; }
+        .rec-lote-info { color:#555; flex:1; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div id="sidebar-container"></div>
+    <div class="conteudo" style="padding-bottom:90px;">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <div>
+                <a href="/pages/reclamacoes.html" style="color:#666;font-size:13px;text-decoration:none;">← Voltar para Reclamações</a>
+                <h2 class="pagina-titulo" style="margin:4px 0 0;" id="titulo-pagina">Carregando...</h2>
+            </div>
+            <span id="badge-status" class="badge"></span>
+        </div>
+
+        <!-- Dados do Lote -->
+        <div class="card secao">
+            <div class="secao-titulo">📦 Dados do Lote de Devolução</div>
+            <div class="grid-3" style="margin-bottom:16px;">
+                <div class="info-item"><label>Criado por</label><span id="info-criado-por">—</span></div>
+                <div class="info-item"><label>Criado em</label><span id="info-criado-em">—</span></div>
+                <div class="info-item"><label>Total de Reclamações</label><span id="info-total-recs">—</span></div>
+            </div>
+            <!-- Lista de reclamações do lote -->
+            <div class="secao-titulo" style="margin-top:8px;">Reclamações agrupadas</div>
+            <div id="lista-recs-lote"></div>
+        </div>
+
+        <!-- Histórico / Linha do Tempo -->
+        <div id="linha-do-tempo"></div>
+
+        <!-- Etapa Ativa -->
+        <div id="secao-etapa-atual"></div>
+
+        <!-- Chat de Dúvidas ao SAC -->
+        <div class="card secao" id="bloco-chat" style="display:none">
+            <div class="secao-titulo">💬 Dúvidas ao SAC</div>
+            <div class="chat-container" id="chat-msgs">
+                <p style="color:#999;font-size:13px;text-align:center">Nenhuma mensagem ainda.</p>
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chat-texto" rows="2" placeholder="Digite sua dúvida ou resposta..."></textarea>
+                <button class="btn btn-primary" onclick="chatEnviar()">Enviar</button>
+            </div>
+        </div>
+
+        <!-- Histórico de Movimentações (do lote via reclamações) -->
+        <div class="card secao">
+            <div class="secao-titulo">📅 Histórico de Movimentações</div>
+            <div id="historico-lista"><p style="color:#999;font-size:13px;">Nenhuma movimentação registrada.</p></div>
+        </div>
+    </div>
+</div>
+
+<div class="rodape-fixo" id="rodape-acoes" style="display:none;"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+    carregarSidebar();
+    const params = new URLSearchParams(window.location.search);
+    const loteId = params.get('id');
+    if (!loteId) window.location.href = '/pages/reclamacoes.html';
+
+    let lote = null;
+
+    const statusLabel = {
+        encaminhando_devolucao_sac:                          'SAC — Verificando NF',
+        encaminhando_devolucao_conferindo_nf_fiscal:         'Fiscal — Conferindo NF',
+        encaminhando_devolucao_sac_solicitar_coleta:         'SAC — Solicitando Coleta',
+        encaminhando_devolucao_aguardando_chegada_material:  'Ag. Chegada do Material',
+        encaminhando_devolucao_aguardando_revisao:           'Revisão — Aguardando',
+        encaminhando_devolucao_aguardando_conferencia_material: 'Fiscal — Conferindo Material',
+        encaminhando_devolucao_aguardando_of:                'PCP — Aguardando OF',
+        encaminhando_devolucao_aguardando_correcao_nf_cliente: 'SAC — Corrigindo NF',
+        concluido:                                           'Concluído',
+    };
+
+    function fmt(dt)  { return dt ? new Date(dt).toLocaleString('pt-BR') : '—'; }
+    function fmtD(dt) { if (!dt) return '—'; const d = dt.includes('T') ? new Date(dt) : new Date(dt+'T00:00:00'); return d.toLocaleDateString('pt-BR'); }
+    function fmtM(v)  { if (v === null || v === undefined || v === '') return '—'; const n = parseFloat(v); if (isNaN(n)) return '—'; return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' m'; }
+
+    function badgeCor(s) {
+        if (s === 'concluido') return 'badge-verde';
+        return 'badge-azul';
+    }
+
+    async function carregar() {
+        const r = await api('GET', '/reclamacoes/lotes/' + loteId);
+        if (!r.ok) { alert('Erro ao carregar lote.'); return; }
+        lote = r.dados.dados; // duplo unwrap pelo helper api()
+        renderizar();
+    }
+
+    function renderizar() {
+        const lt = lote;
+        const usuario = getUsuario();
+        const perfil = usuario.perfil;
+        const status = lt.status;
+        const loteCod = 'LOTE-' + String(lt.codigo).padStart(6, '0');
+
+        // Cabeçalho
+        document.getElementById('titulo-pagina').textContent = loteCod;
+        const bEl = document.getElementById('badge-status');
+        bEl.textContent = statusLabel[status] || status;
+        bEl.className = 'badge ' + badgeCor(status);
+
+        // Dados básicos
+        document.getElementById('info-criado-por').textContent = lt.criado_por_nome || '—';
+        document.getElementById('info-criado-em').textContent = fmt(lt.criado_em);
+        document.getElementById('info-total-recs').textContent = (lt.reclamacoes || []).length;
+
+        // Lista de reclamações
+        const listaEl = document.getElementById('lista-recs-lote');
+        if (lt.reclamacoes && lt.reclamacoes.length) {
+            listaEl.innerHTML = lt.reclamacoes.map(rec => {
+                const cod = 'REC-' + String(rec.codigo).padStart(6, '0');
+                return `<div class="rec-lote-item">
+                    <span class="rec-lote-codigo">${cod}</span>
+                    <span class="rec-lote-info">${rec.cliente_nome || '—'} — NF: ${rec.nossa_nf || '—'} — ${rec.artigo || '—'}</span>
+                    <a href="/pages/detalhe-reclamacao.html?id=${rec.id}" target="_blank"
+                       style="font-size:11px;color:#1a237e;text-decoration:none;border:1px solid #c5cae9;border-radius:4px;padding:2px 8px;">Ver →</a>
+                </div>`;
+            }).join('');
+        } else {
+            listaEl.innerHTML = '<p style="color:#999;font-size:13px;">Nenhuma reclamação vinculada.</p>';
+        }
+
+        // Histórico
+        renderHistorico(lt);
+
+        // Linha do tempo (blocos concluídos)
+        renderLinhaTempo(lt);
+
+        // Etapa ativa
+        renderEtapaAtual(lt, perfil, status);
+
+        // Chat de dúvidas ao SAC — sempre visível exceto se concluído
+        if (status !== 'concluido') {
+            document.getElementById('bloco-chat').style.display = 'block';
+            chatCarregar();
+        }
+    }
+
+    function renderHistorico(lt) {
+        const historico = lt.historico || [];
+        const el = document.getElementById('historico-lista');
+        if (!historico.length) {
+            el.innerHTML = '<p style="color:#999;font-size:13px;">Nenhuma movimentação registrada.</p>';
+            return;
+        }
+        el.innerHTML = historico.map(h => `
+            <div class="historico-linha">
+                <span class="historico-data">${fmt(h.criado_em)}</span>
+                <span><strong>${h.usuario_nome || 'Sistema'}</strong> — ${h.observacao || ''}</span>
+            </div>`).join('');
+    }
+
+    function renderLinhaTempo(lt) {
+        let html = '';
+
+        const ordemStatus = [
+            'encaminhando_devolucao_sac',
+            'encaminhando_devolucao_conferindo_nf',
+            'encaminhando_devolucao_conferindo_nf_fiscal',
+            'encaminhando_devolucao_sac_solicitar_coleta',
+            'encaminhando_devolucao_aguardando_chegada_material',
+            'encaminhando_devolucao_aguardando_revisao',
+            'encaminhando_devolucao_aguardando_conferencia_material',
+            'encaminhando_devolucao_aguardando_of',
+            'gerando_credito_sac',
+            'aguardando_aprovacao_financeiro',
+            'aguardando_encerramento_comercial',
+            'concluido'
+        ];
+        const idxAtual = ordemStatus.indexOf(lt.status);
+        const passou = (s) => ordemStatus.indexOf(s) < idxAtual;
+
+        // ── ETAPA 1: NFs de despacho ──────────────────────────────
+        if (passou('encaminhando_devolucao_sac')) {
+            let nfsArr = [];
+            try { nfsArr = lt.nfs_despacho ? JSON.parse(lt.nfs_despacho) : []; } catch(e) {}
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">📋 Etapa 1 — NFs de Despacho (SAC)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                ${nfsArr.length ? `<table class="nf-table" style="margin-bottom:10px">
+                    <thead><tr><th>Nº NF</th><th style="text-align:right">Metragem</th><th style="text-align:right">Volumes</th><th style="text-align:right">Peso</th><th style="text-align:right">Valor NF</th></tr></thead>
+                    <tbody>${nfsArr.map(n=>`<tr>
+                        <td>${n.numero_nf||'—'}</td>
+                        <td style="text-align:right">${fmtM(n.metragem)}</td>
+                        <td style="text-align:right">${n.volumes||'—'}</td>
+                        <td style="text-align:right">${n.peso ? parseFloat(n.peso).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg' : '—'}</td>
+                        <td style="text-align:right">${n.valor_nf ? 'R$ '+parseFloat(n.valor_nf).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
+                    </tr>`).join('')}</tbody>
+                </table>` : ''}
+                <div class="grid-2">
+                    <div class="info-item"><label>Total Metragem</label><span>${fmtM(lt.quantidade_confirmada)}</span></div>
+                    <div class="info-item"><label>Transportadora Escolhida</label><span>${lt.transportadora||'—'}</span></div>
+                </div>
+                ${lt.observacoes_nf?`<div class="info-item" style="margin-top:8px"><label>Observações</label><span>${lt.observacoes_nf}</span></div>`:''}
+            </div>`;
+        }
+
+        // ── ETAPA 2: NFs de devolução do cliente ─────────────────
+        if (passou('encaminhando_devolucao_conferindo_nf')) {
+            let nfsCliente = [];
+            try { nfsCliente = lt.nfs_cliente_urls ? JSON.parse(lt.nfs_cliente_urls) : []; } catch(e) {}
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">📄 Etapa 2 — NFs de Devolução do Cliente (SAC)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                ${nfsCliente.length
+                    ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">${nfsCliente.map(nf=>`<a href="${nf.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#e8eaf6;border-radius:6px;color:#1a237e;text-decoration:none;font-size:12px;font-weight:600">📄 ${nf.nome}</a>`).join('')}</div>`
+                    : '<span style="color:#999;font-size:13px">Nenhuma NF anexada.</span>'}
+            </div>`;
+        }
+
+        // ── ETAPA 3: Conferência fiscal ───────────────────────────
+        if (passou('encaminhando_devolucao_conferindo_nf_fiscal')) {
+            const aprovado = lt.status !== 'encaminhando_devolucao_conferindo_nf'; // voltou = reprovado na etapa anterior
+            // Usamos observacoes_nf para guardar o motivo de reprovação fiscal
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">🔍 Etapa 3 — Conferência Fiscal das NFs (Fiscal)</div>
+                    <span class="badge badge-verde">Aprovado</span>
+                </div>
+                <div class="info-resultado procedente">✅ NFs de devolução aprovadas pelo Fiscal.</div>
+            </div>`;
+        }
+
+        // ── ETAPA 4: Coleta solicitada ────────────────────────────
+        if (passou('encaminhando_devolucao_sac_solicitar_coleta')) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">🚛 Etapa 4 — Coleta Solicitada (SAC)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                <div class="grid-3">
+                    <div class="info-item"><label>Transportadora</label><span>${lt.transportadora||'—'}</span></div>
+                    <div class="info-item"><label>Data da Coleta</label><span>${fmtD(lt.data_coleta)}</span></div>
+                    <div class="info-item"><label>Previsão de Chegada</label><span>${fmtD(lt.data_prevista_chegada)}</span></div>
+                </div>
+            </div>`;
+        }
+
+        // ── ETAPA 5: Material recebido pela Expedição ─────────────
+        if (passou('encaminhando_devolucao_aguardando_chegada_material')) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">📥 Etapa 5 — Material Recebido (Expedição)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                <div class="info-resultado procedente" style="margin:0">✅ Material recebido pela expedição.</div>
+            </div>`;
+        }
+
+        // ── ETAPA 6: Revisão ──────────────────────────────────────
+        if (passou('encaminhando_devolucao_aguardando_revisao')) {
+            const itensRev = lt.romaneio_itens || [];
+            const totalMetros = itensRev.reduce((s, it) => s + (parseFloat(it.metros)||0), 0);
+            const tabelaItens = itensRev.length ? `
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px">
+                    <thead><tr style="background:#f5f5f5">
+                        <th style="padding:6px 8px;text-align:center;border:1px solid #e0e0e0;width:5%">#</th>
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e0e0e0;width:20%">NF</th>
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e0e0e0">Artigo</th>
+                        <th style="padding:6px 8px;text-align:left;border:1px solid #e0e0e0;width:18%">Qualidade</th>
+                        <th style="padding:6px 8px;text-align:right;border:1px solid #e0e0e0;width:14%">Metros</th>
+                    </tr></thead>
+                    <tbody>${itensRev.map((it,i)=>`<tr>
+                        <td style="padding:5px 8px;border:1px solid #e0e0e0;text-align:center;color:#999">${i+1}</td>
+                        <td style="padding:5px 8px;border:1px solid #e0e0e0">${it.numero_nf||'—'}</td>
+                        <td style="padding:5px 8px;border:1px solid #e0e0e0">${it.codigo_produto||'—'}</td>
+                        <td style="padding:5px 8px;border:1px solid #e0e0e0">${it.qualidade||'—'}</td>
+                        <td style="padding:5px 8px;border:1px solid #e0e0e0;text-align:right">${fmtM(it.metros)}</td>
+                    </tr>`).join('')}</tbody>
+                    <tfoot><tr style="background:#e8f5e9;font-weight:700">
+                        <td colspan="4" style="padding:6px 8px;border:1px solid #e0e0e0">Total</td>
+                        <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:right">${fmtM(totalMetros)}</td>
+                    </tr></tfoot>
+                </table>` : '<p style="color:#999;font-size:13px;margin-top:6px">Nenhum item revisado.</p>';
+
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">🧵 Etapa 6 — Revisão do Material</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                ${tabelaItens}
+            </div>`;
+        }
+
+        // ── ETAPA 7: Conferência Fiscal do material ───────────────
+        if (passou('encaminhando_devolucao_aguardando_conferencia_material')) {
+            const ok = lt.romaneio_nf_ok === true || lt.romaneio_nf_ok === 'true';
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">✅ Etapa 7 — Conferência do Material (Fiscal)</div>
+                    <span class="badge ${ok?'badge-verde">Aprovado':'badge-vermelho">Reprovado'}</span>
+                </div>
+                <div class="info-resultado ${ok?'procedente':'improcedente'}">${ok?'✅ Material aprovado pelo Fiscal.':'❌ Material reprovado pelo Fiscal.'}</div>
+                ${lt.descricao_conferencia?`<div class="info-item"><label>Observações</label><span>${lt.descricao_conferencia}</span></div>`:''}
+                ${lt.valor_credito?`<div class="info-item"><label>Valor do Crédito</label><span>R$ ${parseFloat(lt.valor_credito).toFixed(2).replace('.',',')}</span></div>`:''}
+            </div>`;
+        }
+
+        // ── ETAPA 8: PCP emitiu OF ────────────────────────────────
+        if (passou('encaminhando_devolucao_aguardando_of')) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">⚙️ Etapa 8 — Ordem de Fabricação (PCP)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                <div class="info-resultado procedente">✅ OF emitida pelo PCP.</div>
+                ${lt.numero_of ? `<div class="info-item" style="margin-top:6px"><label>Nº da OF</label><span style="font-weight:700">${lt.numero_of}</span></div>` : ''}
+            </div>`;
+        }
+
+        // ── ETAPA 9: Crédito — SAC definiu forma ─────────────────
+        if (passou('gerando_credito_sac')) {
+            const formaLabel = { boleto_cancelado: '❌ Cancelar Boleto', desconto_boleto: '💳 Abater em Outro Boleto', outro: '📝 Outros' };
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">💰 Etapa 9 — Definição de Crédito (SAC)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                <div class="grid-2">
+                    <div class="info-item"><label>Valor do Crédito</label><span>R$ ${lt.valor_credito?parseFloat(lt.valor_credito).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</span></div>
+                    <div class="info-item"><label>Forma</label><span>${formaLabel[lt.tipo_credito]||lt.tipo_credito||'—'}</span></div>
+                    ${lt.contato_cliente?`<div class="info-item"><label>Contato no Cliente</label><span>${lt.contato_cliente}</span></div>`:''}
+                </div>
+                ${lt.descricao_credito?`<div class="info-item" style="margin-top:6px"><label>O que foi tratado com o cliente</label><span>${lt.descricao_credito}</span></div>`:''}
+            </div>`;
+        }
+
+        // ── ETAPA 10: Financeiro tomou ciência ────────────────────
+        if (passou('aguardando_aprovacao_financeiro')) {
+            html += `<div class="card secao etapa-concluida">
+                <div class="etapa-header">
+                    <div class="secao-titulo" style="margin:0">💰 Etapa 10 — Ciência do Crédito (Financeiro)</div>
+                    <span class="badge badge-verde">Concluído</span>
+                </div>
+                <div class="info-resultado procedente">✅ Financeiro confirmou ciência do crédito.</div>
+            </div>`;
+        }
+
+        // ── Concluído ─────────────────────────────────────────────
+        if (lt.status === 'concluido') {
+            html += `<div class="card secao" style="background:#e8f5e9;border:none;">
+                <div class="secao-titulo">✅ Lote Concluído</div>
+                <p style="color:#555;font-size:13px">Encerrado em ${fmt(lt.concluido_em||lt.atualizado_em)}.</p>
+            </div>`;
+        }
+
+        document.getElementById('linha-do-tempo').innerHTML = html || '';
+    }
+
+    function renderEtapaAtual(lt, perfil, status) {
+        const secao  = document.getElementById('secao-etapa-atual');
+        const rodape = document.getElementById('rodape-acoes');
+        secao.innerHTML = '';
+        rodape.style.display = 'none';
+
+        const btn = `<button class="btn btn-voltar-pg" onclick="window.location.href='/pages/reclamacoes.html'">← Voltar</button>`;
+        const loteCod = 'LOTE-' + String(lt.codigo).padStart(6, '0');
+
+        // ===== ETAPA 1: SAC — Informar NFs e cotar fretes =====
+        if (status === 'encaminhando_devolucao_sac' && ['admin', 'sac'].includes(perfil)) {
+            let nfsExistentes = [];
+            try { nfsExistentes = lt.nfs_despacho ? JSON.parse(lt.nfs_despacho) : []; } catch(e) { nfsExistentes = []; }
+            const linhasIniciais = nfsExistentes.length ? nfsExistentes.map((n,i) => nfLinha(i, n)).join('') : nfLinha(0, {});
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 1 — Informar NFs e Cotar Fretes</div>
+                <div class="info-resultado neutro">Comercial aprovou a devolução. Informe as NFs de despacho, confirme os totais, colete as cotações e informe o cliente.</div>
+
+                <div class="campo">
+                    <label>NFs de Despacho *</label>
+                    <table class="nf-table" id="nf-table">
+                        <thead>
+                            <tr>
+                                <th style="width:18%">Nº NF</th>
+                                <th style="width:18%;text-align:right">Metragem (m)</th>
+                                <th style="width:14%;text-align:right">Volumes</th>
+                                <th style="width:18%;text-align:right">Peso (kg)</th>
+                                <th style="width:20%;text-align:right">Valor NF (R$)</th>
+                                <th style="width:12%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="nf-tbody">${linhasIniciais}</tbody>
+                    </table>
+                    <button class="btn-add-linha" onclick="nfAddLinha()">+ Adicionar NF</button>
+                </div>
+
+                <div class="nf-totais">
+                    <div><label>Total Metragem:</label><span id="tot-metragem">0,00 m</span></div>
+                    <div><label>Total Volumes:</label><span id="tot-volumes">0</span></div>
+                    <div><label>Total Peso:</label><span id="tot-peso">0,00 kg</span></div>
+                    <div><label>Total Valor NF:</label><span id="tot-valor">R$ 0,00</span></div>
+                    <div style="margin-left:auto"><span id="nf-save-status" style="font-size:11px"></span></div>
+                </div>
+
+                <div class="campo" style="margin-top:16px">
+                    <label>Cotações de Frete *</label>
+                    <table class="cotacoes-table">
+                        <thead><tr><th>Transportadora</th><th>Valor (R$)</th><th></th></tr></thead>
+                        <tbody id="dv-cotacoes-linhas">${buildCotacoesLinhas(lt.cotacoes || [])}</tbody>
+                    </table>
+                    <button class="btn-add-linha" onclick="addLinhaCotacao()">+ Adicionar cotação</button>
+                </div>
+                <div class="campo"><label>Transportadora Escolhida *</label>
+                    <select id="dv-transp">
+                        <option value="">Selecione após cotar...</option>
+                        ${(lt.cotacoes || []).map(c => `<option value="${c.transportadora}" ${lt.transportadora === c.transportadora ? 'selected' : ''}>${c.transportadora}${c.valor ? ' — R$ ' + parseFloat(c.valor).toFixed(2).replace('.', ',') : ''}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="campo"><label>Observações</label>
+                    <textarea id="dv-obs" rows="3" placeholder="Informações adicionais..." onblur="nfAutoSave()">${lt.observacoes_nf || ''}</textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunhoDevolucao()">Salvar Rascunho</button><button class="btn btn-primary" onclick="confirmarDevolucao()">Confirmar e Informar Cliente</button>`;
+            nfRecalcular();
+        }
+
+        // ===== ETAPA 2: SAC — Upload das NFs de devolução do cliente =====
+        else if (status === 'encaminhando_devolucao_conferindo_nf' && ['admin', 'sac'].includes(perfil)) {
+            // Montar lista de NFs já enviadas (salvas no campo nfs_cliente_urls como JSON)
+            let nfsClienteExistentes = [];
+            try { nfsClienteExistentes = lt.nfs_cliente_urls ? JSON.parse(lt.nfs_cliente_urls) : []; } catch(e) {}
+
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 2 — NFs de Devolução do Cliente</div>
+                <div class="info-resultado neutro">
+                    Transportadora escolhida: <strong>${lt.transportadora || '—'}</strong> &nbsp;|&nbsp;
+                    Total: <strong>${fmtM(lt.quantidade_confirmada)}</strong><br>
+                    <small>O cliente foi informado. Aguarde ele emitir as NFs de devolução e faça o upload abaixo.</small>
+                </div>
+
+                <div class="campo">
+                    <label>NFs de Devolução do Cliente *</label>
+                    <div id="nfs-cliente-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+                        ${nfsClienteExistentes.map((nf,i) => `
+                        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f5f5f5;border-radius:6px;font-size:13px" id="nfc-item-${i}">
+                            <span>📄</span>
+                            <a href="${nf.url}" target="_blank" style="flex:1;color:#1a237e;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nf.nome}</a>
+                            <button onclick="nfClienteRemover(${i})" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px">✕</button>
+                        </div>`).join('')}
+                    </div>
+                    <div class="upload-area" onclick="document.getElementById('nfc-file').click()" id="nfc-upload-area"
+                         style="border:2px dashed #9fa8da;border-radius:8px;padding:20px;text-align:center;cursor:pointer;color:#3949ab">
+                        <input type="file" id="nfc-file" accept=".pdf,image/*" multiple style="display:none" onchange="nfClienteUpload(this)" />
+                        <div>📎 Clique para adicionar NF(s) de devolução</div>
+                        <div style="font-size:11px;color:#999;margin-top:4px">PDF ou imagem — pode selecionar vários</div>
+                    </div>
+                    <div id="nfc-upload-status" style="font-size:12px;margin-top:6px;color:#555"></div>
+                </div>
+                <div class="campo"><label>Observações</label>
+                    <textarea id="dv-nf-obs" rows="2" placeholder="Informações adicionais sobre as NFs...">${lt.observacoes_nf || ''}</textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}${btnVoltarEtapa('encaminhando_devolucao_sac', perfil)}<button class="btn btn-primary" onclick="enviarNFsParaFiscal()">✅ Enviar para Fiscal Conferir</button>`;
+        }
+
+        // ===== ETAPA 3: Fiscal — Conferir NFs de devolução =====
+        else if (status === 'encaminhando_devolucao_conferindo_nf_fiscal' && ['admin', 'fiscal'].includes(perfil)) {
+            let nfsClienteExistentes = [];
+            try { nfsClienteExistentes = lt.nfs_cliente_urls ? JSON.parse(lt.nfs_cliente_urls) : []; } catch(e) {}
+            const linksNFs = nfsClienteExistentes.length
+                ? nfsClienteExistentes.map(nf => `<a href="${nf.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#e8eaf6;border-radius:6px;color:#1a237e;text-decoration:none;font-size:12px;font-weight:600">📄 ${nf.nome}</a>`).join(' ')
+                : '<span style="color:#c62828">Nenhuma NF anexada pelo SAC.</span>';
+
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 3 — Conferência Fiscal das NFs de Devolução</div>
+                <div class="info-resultado neutro">Confira os aspectos fiscais das NFs de devolução emitidas pelo cliente (CFOP, CST, dados do emitente, etc).</div>
+
+                <div class="campo">
+                    <label>NFs para conferir</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${linksNFs}</div>
+                </div>
+
+                <div class="campo" style="margin-top:16px">
+                    <label>As NFs estão fiscalmente corretas? *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item" onclick="fiscalToggle(true)">
+                            <input type="radio" name="nf-ok" value="true" /> ✅ Sim, NFs aprovadas
+                        </label>
+                        <label class="radio-item" onclick="fiscalToggle(false)">
+                            <input type="radio" name="nf-ok" value="false" /> ❌ Não, há problema fiscal
+                        </label>
+                    </div>
+                </div>
+                <div id="fiscal-campo-problema" style="display:none">
+                    <div class="campo">
+                        <label>Descreva o problema fiscal encontrado *</label>
+                        <textarea id="nf-descricao" rows="4" placeholder="Ex: CFOP incorreto (deveria ser 5201), CST divergente, dados do emitente incorretos..."></textarea>
+                    </div>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}${btnVoltarEtapa('encaminhando_devolucao_conferindo_nf', perfil)}<button class="btn btn-primary" onclick="concluirConferenciaNF()">✅ Confirmar Conferência</button>`;
+        }
+
+        // ===== ETAPA 4: SAC — Solicitar coleta =====
+        else if (status === 'encaminhando_devolucao_sac_solicitar_coleta' && ['admin', 'sac'].includes(perfil)) {
+            // NFs de devolução já conferidas pelo fiscal
+            let nfsCliente = [];
+            try { nfsCliente = lt.nfs_cliente_urls ? JSON.parse(lt.nfs_cliente_urls) : []; } catch(e) {}
+            const linksNFs = nfsCliente.length
+                ? nfsCliente.map(nf => `<a href="${nf.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:#e8eaf6;border-radius:6px;color:#1a237e;text-decoration:none;font-size:12px;font-weight:600">📄 ${nf.nome}</a>`).join(' ')
+                : '—';
+
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 4 — Solicitar Coleta</div>
+                <div class="info-resultado procedente">✅ NFs aprovadas pelo Fiscal. Solicite a coleta do material.</div>
+
+                <div class="grid-2" style="margin-bottom:12px">
+                    <div class="info-item"><label>Transportadora</label><span style="font-weight:600">${lt.transportadora||'—'}</span></div>
+                    <div class="info-item"><label>Total Metragem</label><span>${fmtM(lt.quantidade_confirmada)}</span></div>
+                </div>
+                <div class="info-item" style="margin-bottom:16px">
+                    <label>NFs de Devolução do Cliente (já conferidas)</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${linksNFs}</div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="campo"><label>Data da Coleta *</label>
+                        <input type="date" id="col-data" value="${lt.data_coleta ? lt.data_coleta.substring(0,10) : ''}" /></div>
+                    <div class="campo"><label>Data Prevista de Chegada</label>
+                        <input type="date" id="col-chegada" value="${lt.data_prevista_chegada ? lt.data_prevista_chegada.substring(0,10) : ''}" /></div>
+                </div>
+                <div class="campo"><label>Observações</label>
+                    <textarea id="col-obs" rows="2" placeholder="Informações adicionais sobre a coleta..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}${btnVoltarEtapa('encaminhando_devolucao_conferindo_nf_fiscal', perfil)}<button class="btn btn-secondary" onclick="salvarRascunhoColeta()">Salvar Rascunho</button><button class="btn btn-primary" onclick="confirmarColeta()">Confirmar Coleta</button>`;
+        }
+
+        // ===== ETAPA 5: Expedição — Receber material =====
+        else if (status === 'encaminhando_devolucao_aguardando_chegada_material' && ['admin', 'expedicao'].includes(perfil)) {
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 5 — Recebimento do Material (Expedicao)</div>
+                <div class="info-resultado neutro">
+                    Material esperado.
+                    ${lt.data_prevista_chegada ? `<strong>Previsao de chegada: ${fmtD(lt.data_prevista_chegada)}</strong>` : ''}
+                    ${lt.transportadora ? ` — Transportadora: ${lt.transportadora}` : ''}
+                    ${lt.nf_coleta ? ` — NF Coleta: ${lt.nf_coleta}` : ''}
+                </div>
+                <div class="campo"><label>Data de Recebimento *</label>
+                    <input type="date" id="rec-data" value="${new Date().toISOString().split('T')[0]}" />
+                </div>
+                <div class="campo"><label>Observacoes</label>
+                    <textarea id="rec-obs" rows="3" placeholder="Ex: Material recebido com avaria..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-primary" onclick="receberMaterial()">✅ Confirmar Recebimento</button>`;
+        }
+
+        // ===== ETAPA 6: Revisão — Revisar material e romaneio =====
+        else if (status === 'encaminhando_devolucao_aguardando_revisao' && ['admin', 'revisao'].includes(perfil)) {
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 6 — Revisão do Material</div>
+                <div class="info-resultado neutro">Material recebido. Revise, gere o romaneio e encaminhe ao Fiscal.</div>
+                <div class="campo"><label>Revisora *</label>
+                    <input type="text" id="rv-revisora" value="" placeholder="Nome da revisora responsável..." />
+                </div>
+                <div class="campo"><label>Observações da Revisão</label>
+                    <textarea id="rv-descricao" rows="2" placeholder="Anotações sobre o material revisado..."></textarea>
+                </div>
+                <div class="campo">
+                    <label>Romaneio de Itens *</label>
+                    <table class="plano-acao-table" id="rv-tabela">
+                        <thead><tr>
+                            <th style="width:4%;text-align:center">#</th>
+                            <th style="width:16%">NF</th>
+                            <th style="width:28%">Artigo</th>
+                            <th style="width:24%">Qualidade</th>
+                            <th style="width:18%;text-align:right">Metros</th>
+                            <th style="width:10%"></th>
+                        </tr></thead>
+                        <tbody id="rv-tbody">${rvLinha(0, {})}</tbody>
+                    </table>
+                    <button class="btn-add-linha" onclick="rvAdicionarLinha()" style="margin-top:8px">+ Nova linha</button>
+                    <span id="rv-msg" style="font-size:12px;margin-left:12px"></span>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-secondary" onclick="salvarRascunhoRevisao()">💾 Salvar Rascunho</button><button class="btn btn-primary" onclick="concluirRevisao()">✅ Concluir Revisão</button>`;
+            rvRenumerar();
+        }
+
+        // ===== ETAPA 7: Fiscal — Conferência NF x Romaneio =====
+        else if (status === 'encaminhando_devolucao_aguardando_conferencia_material' && ['admin', 'fiscal'].includes(perfil)) {
+            // NFs do cliente (Etapa 2)
+            let nfsCliente = [];
+            try { nfsCliente = lt.nfs_cliente_urls ? JSON.parse(lt.nfs_cliente_urls) : []; } catch(e) {}
+            const linksNFs = nfsCliente.length
+                ? nfsCliente.map(nf => `<a href="${nf.url}" target="_blank"
+                    style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#e8eaf6;border-radius:6px;color:#1a237e;text-decoration:none;font-size:12px;font-weight:600">
+                    📄 ${nf.nome}</a>`).join(' ')
+                : '<span style="color:#c62828;font-size:13px">Nenhuma NF anexada pelo SAC.</span>';
+
+            // Romaneio agrupado: NF → Artigo → soma metros
+            const itens = lt.romaneio_itens || [];
+            const grupoNF = {};
+            itens.forEach(it => {
+                const nf  = it.numero_nf  || '(sem NF)';
+                const art = it.codigo_produto || '(sem artigo)';
+                const m   = parseFloat(it.metros) || 0;
+                if (!grupoNF[nf]) grupoNF[nf] = { artigos: {}, totalNF: 0 };
+                if (!grupoNF[nf].artigos[art]) grupoNF[nf].artigos[art] = { metros: 0, qualidades: [] };
+                grupoNF[nf].artigos[art].metros += m;
+                grupoNF[nf].totalNF += m;
+                if (it.qualidade && !grupoNF[nf].artigos[art].qualidades.includes(it.qualidade))
+                    grupoNF[nf].artigos[art].qualidades.push(it.qualidade);
+            });
+
+            let resumoHtml = '';
+            let totalGeral = 0;
+            Object.entries(grupoNF).forEach(([nf, dados]) => {
+                resumoHtml += `<tr style="background:#e8eaf6">
+                    <td colspan="3" style="padding:6px 10px;font-weight:700;color:#1a237e;font-size:13px">📋 NF: ${nf}</td>
+                    <td style="padding:6px 10px;text-align:right;font-weight:700;color:#1a237e">${fmtM(dados.totalNF)}</td>
+                </tr>`;
+                Object.entries(dados.artigos).forEach(([art, info]) => {
+                    resumoHtml += `<tr>
+                        <td style="padding:4px 10px 4px 24px;color:#555">${art}</td>
+                        <td style="padding:4px 10px;color:#777;font-size:12px">${info.qualidades.join(', ')||'—'}</td>
+                        <td style="padding:4px 10px;text-align:right">${fmtM(info.metros)}</td>
+                        <td></td>
+                    </tr>`;
+                });
+                totalGeral += dados.totalNF;
+            });
+
+            const tabelaRomaneio = itens.length ? `
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden">
+                    <thead><tr style="background:#f5f5f5">
+                        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#555">Artigo</th>
+                        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#555">Qualidade</th>
+                        <th style="padding:8px 10px;text-align:right;font-weight:600;color:#555">Metros</th>
+                        <th style="padding:8px 10px;text-align:right;font-weight:600;color:#555">Subtotal NF</th>
+                    </thead>
+                    <tbody>${resumoHtml}</tbody>
+                    <tfoot><tr style="background:#2e7d32;color:#fff">
+                        <td colspan="2" style="padding:8px 10px;font-weight:700">TOTAL GERAL</td>
+                        <td style="padding:8px 10px;text-align:right;font-weight:700">${fmtM(totalGeral)}</td>
+                        <td></td>
+                    </tr></tfoot>
+                </table>` : '<p style="color:#999;font-size:13px">Nenhum item no romaneio.</p>';
+
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 7 — Conferência NF × Romaneio (Fiscal)</div>
+                <div class="info-resultado neutro">Compare as NFs de devolução do cliente com o romaneio da revisão. Após aprovar, informe o valor do crédito a ser gerado.</div>
+
+                <div class="campo">
+                    <label>📄 NFs de Devolução do Cliente</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${linksNFs}</div>
+                </div>
+
+                <div class="campo" style="margin-top:16px">
+                    <label>🧵 Resumo do Romaneio (por NF → por Artigo)</label>
+                    ${tabelaRomaneio}
+                </div>
+
+                <div class="campo" style="margin-top:20px">
+                    <label>O romaneio confere com as NFs? *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item" onclick="toggleConfNF(true)">
+                            <input type="radio" name="conf-nf" value="true" id="conf-ok" /> ✅ Aprovado
+                        </label>
+                        <label class="radio-item" onclick="toggleConfNF(false)">
+                            <input type="radio" name="conf-nf" value="false" id="conf-nok" /> ❌ Reprovado
+                        </label>
+                    </div>
+                </div>
+                <div id="conf-campo-credito" style="display:none">
+                    <div class="campo"><label>Valor do Crédito (R$) * <small style="color:#555;font-weight:400">— informado pelo Fiscal após dar entrada no ERP</small></label>
+                        <input type="number" id="conf-valor-credito" step="0.01" placeholder="0,00" value="${lt.valor_credito||''}" />
+                    </div>
+                    <div class="campo"><label>Observações do Fiscal</label>
+                        <textarea id="conf-obs-fiscal" rows="2" placeholder="Informações sobre a entrada no ERP, crédito gerado..."></textarea>
+                    </div>
+                </div>
+                <div id="conf-campo-problema" style="display:none">
+                    <div class="campo"><label>Descreva o problema encontrado *</label>
+                        <textarea id="conf-descricao" rows="3" placeholder="Ex: Quantidade divergente, artigo incorreto, NF com CFOP errado..."></textarea>
+                    </div>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}${btnVoltarEtapa('encaminhando_devolucao_aguardando_revisao', perfil)}<button class="btn btn-primary" onclick="concluirConferenciaMaterial()">✅ Confirmar Conferência</button>`;
+        }
+
+        // ===== ETAPA 7b: SAC — Corrigir NF com cliente (se fiscal reprovou) =====
+        else if (status === 'encaminhando_devolucao_aguardando_correcao_nf_cliente' && ['admin', 'sac'].includes(perfil)) {
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">Etapa 7b — Corrigir NF com Cliente (SAC)</div>
+                <div class="info-resultado" style="background:#fff3e0;border-left:4px solid #e65c00;padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:13px">
+                    ⚠️ O Fiscal reprovou o romaneio. Corrija com o cliente e reenvie.
+                </div>
+                <div class="campo"><label>Descrição / Observações *</label>
+                    <textarea id="div-obs" rows="3" placeholder="Detalhes do alinhamento com o cliente..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-primary" onclick="reenviarParaConferencia()">✅ Reenviar para Fiscal</button>`;
+        }
+
+        // ===== ETAPA 8: PCP — Emitir OF =====
+        else if (status === 'encaminhando_devolucao_aguardando_of' && ['admin', 'pcp'].includes(perfil)) {
+            const itens = lt.romaneio_itens || [];
+
+            // Agrupa por artigo → soma metros
+            const porArtigo = {};
+            itens.forEach(it => {
+                const art = it.codigo_produto || '(sem artigo)';
+                if (!porArtigo[art]) porArtigo[art] = { metros: 0, pecas: 0 };
+                porArtigo[art].metros += parseFloat(it.metros) || 0;
+                porArtigo[art].pecas++;
+            });
+            const totalGeral = Object.values(porArtigo).reduce((s,v) => s + v.metros, 0);
+
+            const tabelaArtigos = Object.keys(porArtigo).length ? `
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+                    <thead><tr style="background:#f5f5f5">
+                        <th style="padding:7px 10px;text-align:left;border:1px solid #e0e0e0">Artigo</th>
+                        <th style="padding:7px 10px;text-align:center;border:1px solid #e0e0e0;width:80px">Peças</th>
+                        <th style="padding:7px 10px;text-align:right;border:1px solid #e0e0e0;width:120px">Total Metros</th>
+                    </tr></thead>
+                    <tbody>
+                        ${Object.entries(porArtigo).map(([art, dados]) => `
+                        <tr>
+                            <td style="padding:6px 10px;border:1px solid #e0e0e0;font-weight:600">${art}</td>
+                            <td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:center">${dados.pecas}</td>
+                            <td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:right">${fmtM(dados.metros)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                    <tfoot><tr style="background:#e8f5e9;font-weight:700">
+                        <td style="padding:7px 10px;border:1px solid #e0e0e0">TOTAL</td>
+                        <td style="padding:7px 10px;border:1px solid #e0e0e0;text-align:center">${itens.length}</td>
+                        <td style="padding:7px 10px;border:1px solid #e0e0e0;text-align:right">${fmtM(totalGeral)}</td>
+                    </tr></tfoot>
+                </table>` : '<p style="color:#999;font-size:13px">Nenhum item no romaneio.</p>';
+
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">⚙️ Etapa 8 — Emissão da OF (PCP)</div>
+                <div class="info-resultado procedente">✅ Romaneio aprovado pelo Fiscal. Emita a Ordem de Fabricação por artigo.</div>
+
+                <div class="campo">
+                    <label>📋 Resumo por Artigo</label>
+                    ${tabelaArtigos}
+                </div>
+
+                <div style="margin-top:8px">
+                </div>
+
+                <div class="campo" style="margin-top:16px">
+                    <label>Número(s) da OF *</label>
+                    <input type="text" id="of-numero" placeholder="Ex: OF-2024-001 ou OF-001, OF-002..." />
+                </div>
+                <div class="campo">
+                    <label>Observações</label>
+                    <textarea id="of-obs" rows="2" placeholder="Informações adicionais..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}${btnVoltarEtapa('encaminhando_devolucao_aguardando_conferencia_material', perfil)}<button class="btn btn-primary" onclick="concluirOF()">✅ Confirmar OF</button>`;
+        }
+
+        // ===== ETAPA 9: SAC — Definir forma de crédito com o cliente =====
+        else if (status === 'gerando_credito_sac' && ['admin', 'sac'].includes(perfil)) {
+            const valorCredito = lt.valor_credito ? parseFloat(lt.valor_credito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">💰 Etapa 9 — Definição de Crédito com o Cliente (SAC)</div>
+                <div class="info-resultado neutro">
+                    💡 Fiscal gerou crédito de <strong>R$ ${valorCredito}</strong>. Confirme com o cliente a forma de utilização.
+                </div>
+                <div class="campo">
+                    <label>Forma de Geração do Crédito *</label>
+                    <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-item" onclick="selecionarForma(this)">
+                            <input type="radio" name="cr-forma" value="boleto_cancelado" ${lt.tipo_credito==='boleto_cancelado'?'checked':''} /> ❌ Cancelar Boleto
+                        </label>
+                        <label class="radio-item" onclick="selecionarForma(this)">
+                            <input type="radio" name="cr-forma" value="desconto_boleto" ${lt.tipo_credito==='desconto_boleto'?'checked':''} /> 💳 Abater em Outro Boleto
+                        </label>
+                        <label class="radio-item" onclick="selecionarForma(this)">
+                            <input type="radio" name="cr-forma" value="outro" ${lt.tipo_credito==='outro'?'checked':''} /> 📝 Outros
+                        </label>
+                    </div>
+                </div>
+                <div class="campo"><label>Contato realizado com (nome)</label>
+                    <input type="text" id="cr-contato" placeholder="Nome do responsável no cliente..." value="${lt.contato_cliente||''}" />
+                </div>
+                <div class="campo"><label>O que foi tratado com o cliente *</label>
+                    <textarea id="cr-obs-sac" rows="3" placeholder="Descreva o que foi combinado com o cliente sobre o crédito (informações para o Financeiro)...">${lt.descricao_credito||''}</textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-primary" onclick="encaminharCreditoFinanceiro()">✅ Encaminhar ao Financeiro</button>`;
+        }
+
+        // ===== ETAPA 10: Financeiro — Tomar ciência do crédito =====
+        else if (status === 'aguardando_aprovacao_financeiro' && ['admin', 'financeiro'].includes(perfil)) {
+            const valorCredito = lt.valor_credito ? parseFloat(lt.valor_credito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+            const formaLabel = { boleto_cancelado: '❌ Cancelar Boleto', desconto_boleto: '💳 Abater em Outro Boleto', outro: '📝 Outros' };
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">💰 Etapa 10 — Ciência do Crédito (Financeiro)</div>
+                <div class="info-resultado neutro">
+                    <strong>Valor do crédito:</strong> R$ ${valorCredito}
+                    ${lt.tipo_credito ? ` — <strong>Forma:</strong> ${formaLabel[lt.tipo_credito]||lt.tipo_credito}` : ''}
+                    ${lt.contato_cliente ? `<br><strong>Contato no cliente:</strong> ${lt.contato_cliente}` : ''}
+                </div>
+                <div class="campo"><label>Observações (opcional)</label>
+                    <textarea id="cr-fin-obs" rows="2" placeholder="Observações sobre a execução do crédito..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-primary" onclick="confirmarCienciaFinanceiro()">✅ Confirmar Ciência</button>`;
+        }
+
+        // ===== ETAPA 11: Comercial — Encerrar lote =====
+        else if (status === 'aguardando_encerramento_comercial' && ['admin', 'comercial'].includes(perfil)) {
+            secao.innerHTML = `<div class="card secao etapa-ativa">
+                <div class="secao-titulo">🏁 Etapa 11 — Encerramento (Comercial)</div>
+                <div class="campo"><label>Descrição do encerramento *</label>
+                    <textarea id="enc-desc" rows="4" placeholder="Descreva como foi resolvido..."></textarea>
+                </div>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = `${btn}<button class="btn btn-success" onclick="encerrarLote()">✅ Encerrar Lote</button>`;
+        }
+
+        // ===== CONCLUÍDO =====
+        else if (status === 'concluido') {
+            secao.innerHTML = `<div class="card secao" style="background:#e8f5e9;border:none;">
+                <div class="secao-titulo">✅ Lote Concluído</div>
+                <p style="color:#555;font-size:13px">Encerrado em ${fmt(lt.concluido_em || lt.atualizado_em)}.</p>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = btn;
+        }
+
+        // ===== EM ANDAMENTO (outro setor) =====
+        else {
+            secao.innerHTML = `<div class="card secao">
+                <div class="secao-titulo">⏳ ${statusLabel[status] || status}</div>
+                <p style="color:#666;font-size:13px">Esta etapa esta sendo processada por outro setor.</p>
+            </div>`;
+            rodape.style.display = 'flex';
+            rodape.innerHTML = btn;
+        }
+    }
+
+    // ===================================================
+    // HELPERS — tabela NFs de despacho
+    // ===================================================
+    let nfContador = 0;
+    let nfSaveTimer = null;
+
+    function nfLinha(i, n) {
+        return `<tr id="nf-linha-${i}">
+            <td><input type="text" value="${n.numero_nf||''}" placeholder="Ex: 12345" oninput="nfRecalcular()" onblur="nfAutoSave()" /></td>
+            <td><input type="number" value="${n.metragem||''}" placeholder="0,00" step="0.01" min="0" oninput="nfRecalcular()" onblur="nfAutoSave()" style="text-align:right" /></td>
+            <td><input type="number" value="${n.volumes||''}" placeholder="0" min="0" oninput="nfRecalcular()" onblur="nfAutoSave()" style="text-align:right" /></td>
+            <td><input type="number" value="${n.peso||''}" placeholder="0,00" step="0.01" min="0" oninput="nfRecalcular()" onblur="nfAutoSave()" style="text-align:right" /></td>
+            <td><input type="number" value="${n.valor_nf||''}" placeholder="0,00" step="0.01" min="0" oninput="nfRecalcular()" onblur="nfAutoSave()" style="text-align:right" /></td>
+            <td style="text-align:center"><button class="btn-del-linha" onclick="nfRemoverLinhaESalvar(${i})">✕</button></td>
+        </tr>`;
+    }
+
+    function nfAddLinha() {
+        const tbody = document.getElementById('nf-tbody');
+        if (!tbody) return;
+        const i = ++nfContador + 100;
+        tbody.insertAdjacentHTML('beforeend', nfLinha(i, {}));
+        // Foca no primeiro campo da nova linha
+        const novaLinha = document.getElementById('nf-linha-' + i);
+        if (novaLinha) novaLinha.querySelector('input')?.focus();
+    }
+
+    function nfRemoverLinhaESalvar(i) {
+        const tr = document.getElementById('nf-linha-' + i);
+        if (tr) { tr.remove(); nfRecalcular(); nfAutoSave(); }
+    }
+
+    // Mantida para compatibilidade mas delega para nfRemoverLinhaESalvar
+    function nfRemoverLinha(i) { nfRemoverLinhaESalvar(i); }
+
+    function nfRecalcular() {
+        const tbody = document.getElementById('nf-tbody');
+        if (!tbody) return;
+        let totMet = 0, totVol = 0, totPeso = 0, totVal = 0;
+        tbody.querySelectorAll('tr').forEach(tr => {
+            const inp = tr.querySelectorAll('input');
+            totMet  += parseFloat(inp[1]?.value) || 0;
+            totVol  += parseInt(inp[2]?.value)   || 0;
+            totPeso += parseFloat(inp[3]?.value) || 0;
+            totVal  += parseFloat(inp[4]?.value) || 0;
+        });
+        const fmt2 = v => v.toFixed(2).replace('.', ',');
+        const el = id => document.getElementById(id);
+        if (el('tot-metragem')) el('tot-metragem').textContent = fmt2(totMet) + ' m';
+        if (el('tot-volumes'))  el('tot-volumes').textContent  = totVol;
+        if (el('tot-peso'))     el('tot-peso').textContent     = fmt2(totPeso) + ' kg';
+        if (el('tot-valor'))    el('tot-valor').textContent    = 'R$ ' + fmt2(totVal);
+    }
+
+    function nfSetIndicador(txt, cor) {
+        const el = document.getElementById('nf-save-status');
+        if (!el) return;
+        el.textContent = txt;
+        el.style.color = cor;
+    }
+
+    async function nfAutoSave() {
+        // Debounce: espera 600ms sem atividade antes de salvar
+        clearTimeout(nfSaveTimer);
+        nfSetIndicador('⏳ Salvando...', '#888');
+        nfSaveTimer = setTimeout(async () => {
+            const nfs = getNFsDespacho();
+            const qtd = getTotalMetragem();
+            const obs = document.getElementById('dv-obs')?.value.trim() || '';
+            const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/dados', {
+                nfs_despacho:          nfs.length ? JSON.stringify(nfs) : null,
+                quantidade_confirmada: qtd || null,
+                observacoes_nf:        obs || null,
+            });
+            if (r && r.ok) {
+                nfSetIndicador('✅ Salvo', '#2e7d32');
+                setTimeout(() => nfSetIndicador('', ''), 2000);
+            } else {
+                nfSetIndicador('⚠️ Erro ao salvar', '#c62828');
+            }
+        }, 600);
+    }
+
+    function getNFsDespacho() {
+        const tbody = document.getElementById('nf-tbody');
+        if (!tbody) return [];
+        return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+            const inp = tr.querySelectorAll('input');
+            return {
+                numero_nf: inp[0]?.value.trim() || '',
+                metragem:  parseFloat(inp[1]?.value) || 0,
+                volumes:   parseInt(inp[2]?.value)   || 0,
+                peso:      parseFloat(inp[3]?.value) || 0,
+                valor_nf:  parseFloat(inp[4]?.value) || 0,
+            };
+        }).filter(n => n.numero_nf);
+    }
+
+    function getTotalMetragem() {
+        const tbody = document.getElementById('nf-tbody');
+        if (!tbody) return 0;
+        let tot = 0;
+        tbody.querySelectorAll('tr').forEach(tr => {
+            const inp = tr.querySelectorAll('input');
+            tot += parseFloat(inp[1]?.value) || 0;
+        });
+        return tot;
+    }
+
+    // ===================================================
+    // AÇÕES — todas chamam PUT /lotes/:id/status
+    // ===================================================
+
+    async function avancarLote(novoStatus, campos) {
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/status', { status: novoStatus, ...campos });
+        if (r.ok) window.location.reload();
+        else alert((r.dados && r.dados.erro) || 'Erro ao avançar lote.');
+    }
+
+    // Botão de retroceder etapa — só para admin
+    function btnVoltarEtapa(statusAnterior, perfil) {
+        if (perfil !== 'admin') return '';
+        return `<button class="btn btn-secondary" onclick="voltarEtapa('${statusAnterior}')"
+            style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80"
+            title="Retroceder para etapa anterior">⬅ Voltar Etapa</button>`;
+    }
+
+    async function voltarEtapa(statusAnterior) {
+        if (!confirm('Tem certeza que deseja retroceder o lote para a etapa anterior? Esta ação é irreversível.')) return;
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/status', { status: statusAnterior });
+        if (r.ok) window.location.reload();
+        else alert((r.dados && r.dados.erro) || 'Erro ao retroceder etapa.');
+    }
+
+    // Etapa 1 — SAC confirma quantidade e cotações
+    async function salvarRascunhoDevolucao() {
+        const nfs   = getNFsDespacho();
+        const qtd   = getTotalMetragem();
+        const obs   = document.getElementById('dv-obs')?.value.trim() || '';
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/dados', {
+            quantidade_confirmada: qtd || null,
+            observacoes_nf: obs,
+            nfs_despacho: nfs.length ? JSON.stringify(nfs) : null,
+        });
+        if (r.ok) alert('Rascunho salvo!');
+        else alert((r.dados && r.dados.erro) || 'Erro ao salvar rascunho.');
+    }
+
+    async function confirmarDevolucao() {
+        const nfs    = getNFsDespacho();
+        const qtd    = getTotalMetragem();
+        const transp = document.getElementById('dv-transp')?.value;
+        const obs    = document.getElementById('dv-obs')?.value.trim() || '';
+        if (!nfs.length) { alert('Informe ao menos uma NF de despacho.'); return; }
+        if (!qtd)        { alert('A metragem total não pode ser zero.'); return; }
+        if (!transp)     { alert('Selecione a transportadora.'); return; }
+        if (getCotacoes().length < 1) { alert('Adicione ao menos uma cotação.'); return; }
+        await avancarLote('encaminhando_devolucao_conferindo_nf', {
+            observacoes_nf:        obs,
+            transportadora:        transp,
+            quantidade_confirmada: qtd,
+            nfs_despacho:          JSON.stringify(nfs),
+        });
+    }
+
+    // Etapa 2 — Upload múltiplo de NFs de devolução do cliente
+    let nfsClienteUrls = []; // array de {nome, url}
+
+    // Inicializa lista a partir dos dados salvos no lote
+    try { nfsClienteUrls = lote && lote.nfs_cliente_urls ? JSON.parse(lote.nfs_cliente_urls) : []; } catch(e) { nfsClienteUrls = []; }
+
+    async function nfClienteUpload(input) {
+        if (!input.files || !input.files.length) return;
+        const primeiraRec = lote.reclamacoes && lote.reclamacoes[0];
+        if (!primeiraRec) { alert('Nenhuma reclamação no lote.'); return; }
+        const statusEl = document.getElementById('nfc-upload-status');
+        if (statusEl) { statusEl.textContent = '⏳ Enviando...'; statusEl.style.color = '#555'; }
+
+        for (const file of Array.from(input.files)) {
+            const fd = new FormData();
+            fd.append('arquivos', file);
+            fd.append('etapa', 'nf_cliente');
+            const resp = await fetch('/api/reclamacoes/' + primeiraRec.id + '/arquivos', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                body: fd
+            });
+            const data = await resp.json();
+            const arqs = Array.isArray(data) ? data : [data];
+            if (arqs.length && arqs[0].caminho) {
+                nfsClienteUrls.push({ nome: file.name, url: arqs[0].caminho });
+            }
+        }
+        input.value = '';
+        nfClienteRenderLista();
+        await nfClienteSalvar();
+        if (statusEl) { statusEl.textContent = '✅ ' + nfsClienteUrls.length + ' NF(s) anexada(s)'; statusEl.style.color = '#2e7d32'; }
+    }
+
+    function nfClienteRenderLista() {
+        const lista = document.getElementById('nfs-cliente-lista');
+        if (!lista) return;
+        lista.innerHTML = nfsClienteUrls.map((nf, i) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f5f5f5;border-radius:6px;font-size:13px">
+                <span>📄</span>
+                <a href="${nf.url}" target="_blank" style="flex:1;color:#1a237e;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nf.nome}</a>
+                <button onclick="nfClienteRemover(${i})" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px">✕</button>
+            </div>`).join('');
+    }
+
+    async function nfClienteRemover(i) {
+        nfsClienteUrls.splice(i, 1);
+        nfClienteRenderLista();
+        await nfClienteSalvar();
+    }
+
+    async function nfClienteSalvar() {
+        await api('PUT', '/reclamacoes/lotes/' + loteId + '/dados', {
+            nfs_cliente_urls: JSON.stringify(nfsClienteUrls),
+        });
+    }
+
+    async function enviarNFsParaFiscal() {
+        if (!nfsClienteUrls.length) { alert('Anexe ao menos uma NF de devolução do cliente.'); return; }
+        const obs = document.getElementById('dv-nf-obs')?.value.trim() || '';
+        await avancarLote('encaminhando_devolucao_conferindo_nf_fiscal', {
+            nfs_cliente_urls: JSON.stringify(nfsClienteUrls),
+            observacoes_nf: obs,
+        });
+    }
+
+    // Etapa 3 — Fiscal confere NFs fiscalmente
+    function fiscalToggle(ok) {
+        const el = document.getElementById('fiscal-campo-problema');
+        if (el) el.style.display = ok ? 'none' : 'block';
+    }
+
+    async function concluirConferenciaNF() {
+        const nfOk = document.querySelector('input[name="nf-ok"]:checked')?.value;
+        if (!nfOk) { alert('Selecione se as NFs estão aprovadas ou não.'); return; }
+        const desc = document.getElementById('nf-descricao')?.value.trim();
+        if (nfOk === 'false' && !desc) { alert('Descreva o problema fiscal encontrado.'); return; }
+        const proximoStatus = nfOk === 'true'
+            ? 'encaminhando_devolucao_sac_solicitar_coleta'
+            : 'encaminhando_devolucao_conferindo_nf'; // volta para SAC corrigir com cliente
+        await avancarLote(proximoStatus, { observacoes_nf: desc || '' });
+    }
+
+    // Etapa 4 — SAC solicita coleta (transportadora já vem da etapa 1)
+    async function salvarRascunhoColeta() {
+        const data    = document.getElementById('col-data')?.value;
+        const chegada = document.getElementById('col-chegada')?.value;
+        const obs     = document.getElementById('col-obs')?.value.trim() || '';
+        const r = await api('PUT', '/reclamacoes/lotes/' + loteId + '/dados', {
+            data_coleta:           data || null,
+            data_prevista_chegada: chegada || null,
+            observacoes_nf:        obs || null,
+        });
+        if (r.ok) alert('Rascunho salvo!');
+        else alert((r.dados && r.dados.erro) || 'Erro ao salvar.');
+    }
+
+    async function confirmarColeta() {
+        const data    = document.getElementById('col-data')?.value;
+        const chegada = document.getElementById('col-chegada')?.value;
+        const obs     = document.getElementById('col-obs')?.value.trim() || '';
+        if (!data) { alert('Informe a data da coleta.'); return; }
+        await avancarLote('encaminhando_devolucao_aguardando_chegada_material', {
+            data_coleta:           data,
+            data_prevista_chegada: chegada || null,
+            observacoes_nf:        obs || null,
+        });
+    }
+
+    // Etapa 5 — Expedição recebe material
+    async function receberMaterial() {
+        const data = document.getElementById('rec-data')?.value;
+        if (!data) { alert('Informe a data de recebimento.'); return; }
+        await avancarLote('encaminhando_devolucao_aguardando_revisao', {});
+    }
+
+    // Etapa 6 — Revisão
+    let rvContador = 0;
+
+    function rvLinha(i, it) {
+        return `<tr id="rv-linha-${i}">
+            <td style="text-align:center;color:#999;font-size:12px;font-weight:600" class="rv-num">—</td>
+            <td><input class="form-control" id="rv-nf-${i}" value="${it.numero_nf||''}" placeholder="Nº NF" /></td>
+            <td><input class="form-control" id="rv-cod-${i}" value="${it.codigo_produto||''}" placeholder="Ex: MLH004.09" /></td>
+            <td><select class="form-control" id="rv-qual-${i}">
+                <option value="" ${!it.qualidade?'selected':''}>—</option>
+                <option value="1ª" ${it.qualidade==='1ª'?'selected':''}>1ª</option>
+                <option value="2ª" ${it.qualidade==='2ª'?'selected':''}>2ª</option>
+                <option value="3ª" ${it.qualidade==='3ª'?'selected':''}>3ª</option>
+                <option value="Retalho" ${it.qualidade==='Retalho'?'selected':''}>Retalho</option>
+            </select></td>
+            <td><input class="form-control" type="number" id="rv-metros-${i}" value="${it.metros||''}" placeholder="0.00" step="0.01" style="text-align:right" /></td>
+            <td style="text-align:center"><button onclick="rvRemoverLinha(${i})" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:16px">✕</button></td>
+        </tr>`;
+    }
+
+    function rvRenumerar() {
+        document.querySelectorAll('#rv-tbody tr').forEach((tr, idx) => {
+            const num = tr.querySelector('.rv-num');
+            if (num) num.textContent = idx + 1;
+        });
+    }
+
+    function rvAdicionarLinha() {
+        const tbody = document.getElementById('rv-tbody');
+        if (!tbody) return;
+        const i = ++rvContador + 100;
+        tbody.insertAdjacentHTML('beforeend', rvLinha(i, {}));
+        rvRenumerar();
+        document.getElementById('rv-nf-' + i)?.focus();
+    }
+
+    function rvRemoverLinha(i) {
+        const tr = document.getElementById(`rv-linha-${i}`);
+        if (tr) { tr.remove(); rvRenumerar(); }
+    }
+
+    function rvColetarItens() {
+        const itens = [];
+        document.querySelectorAll('#rv-tbody tr').forEach(tr => {
+            const id = tr.id.replace('rv-linha-', '');
+            const cod = document.getElementById(`rv-cod-${id}`)?.value.trim();
+            const nf  = document.getElementById(`rv-nf-${id}`)?.value.trim();
+            if (cod || nf) itens.push({
+                numero_nf:      nf  || null,
+                codigo_produto: cod || null,
+                qualidade:      document.getElementById(`rv-qual-${id}`)?.value || null,
+                metros:         parseFloat(document.getElementById(`rv-metros-${id}`)?.value) || null,
+            });
+        });
+        return itens;
+    }
+
+    async function salvarRascunhoRevisao() {
+        const revisora  = document.getElementById('rv-revisora')?.value.trim();
+        const descricao = document.getElementById('rv-descricao')?.value.trim();
+        const itens     = rvColetarItens();
+        const primeiraRec = lote.reclamacoes && lote.reclamacoes[0];
+        if (primeiraRec) {
+            const r = await api('POST', '/reclamacoes/' + primeiraRec.id + '/revisao/rascunho', { revisora, descricao, itens });
+            const msg = document.getElementById('rv-msg');
+            if (r.ok) { if (msg) { msg.textContent = '✅ Salvo!'; msg.style.color = '#2e7d32'; setTimeout(()=>msg.textContent='',2500); } }
+            else alert((r.dados && r.dados.erro) || 'Erro ao salvar rascunho.');
+        }
+    }
+
+    async function concluirRevisao() {
+        const revisora  = document.getElementById('rv-revisora')?.value.trim();
+        const descricao = document.getElementById('rv-descricao')?.value.trim();
+        const itens     = rvColetarItens();
+        if (!revisora)     { alert('Informe o nome da revisora.'); return; }
+        if (!itens.length) { alert('Adicione ao menos um item no romaneio.'); return; }
+        const primeiraRec = lote.reclamacoes && lote.reclamacoes[0];
+        if (primeiraRec) {
+            const r = await api('POST', '/reclamacoes/' + primeiraRec.id + '/revisao', { revisora, descricao, itens });
+            if (!r.ok) { alert((r.dados && r.dados.erro) || 'Erro ao salvar revisão.'); return; }
+        }
+        await avancarLote('encaminhando_devolucao_aguardando_conferencia_material', {});
+    }
+
+    // Etapa 7 — Fiscal confere NF x Romaneio
+    function toggleConfNF(ok) {
+        const prob = document.getElementById('conf-campo-problema');
+        if (prob) prob.style.display = ok ? 'none' : 'block';
+    }
+    function toggleConfNF(ok) {
+        const prob = document.getElementById('conf-campo-problema');
+        const cred = document.getElementById('conf-campo-credito');
+        if (prob) prob.style.display = ok ? 'none' : 'block';
+        if (cred) cred.style.display = ok ? 'block' : 'none';
+    }
+
+    async function concluirConferenciaMaterial() {
+        const ok = document.querySelector('input[name="conf-nf"]:checked')?.value;
+        if (ok === undefined || ok === null) { alert('Selecione se o material está OK ou não.'); return; }
+        const romaneio_nf_ok = ok === 'true';
+        if (!romaneio_nf_ok) {
+            const desc = document.getElementById('conf-descricao')?.value.trim();
+            if (!desc) { alert('Descreva o problema encontrado.'); return; }
+            await avancarLote('encaminhando_devolucao_aguardando_correcao_nf_cliente', {
+                romaneio_nf_ok: false,
+                descricao_conferencia: desc,
+            });
+        } else {
+            // Fiscal informa o valor do crédito aqui
+            const valor = document.getElementById('conf-valor-credito')?.value;
+            if (!valor || isNaN(parseFloat(valor)) || parseFloat(valor) <= 0) {
+                alert('Informe o valor do crédito a ser gerado.'); return;
+            }
+            await avancarLote('encaminhando_devolucao_aguardando_of', {
+                romaneio_nf_ok: true,
+                valor_credito: parseFloat(valor),
+            });
+        }
+    }
+
+    async function concluirOF() {
+        const numero = document.getElementById('of-numero')?.value.trim();
+        if (!numero) { alert('Informe o número da OF.'); return; }
+        const primeiraRec = lote.reclamacoes && lote.reclamacoes[0];
+        if (primeiraRec) {
+            const r = await api('POST', '/reclamacoes/' + primeiraRec.id + '/of', { numero_of: numero });
+            if (!r.ok) { alert((r.dados && r.dados.erro) || 'Erro ao salvar OF.'); return; }
+        }
+        await avancarLote('gerando_credito_sac', {});
+    }
+
+    function imprimirRomaneioOF() {
+        const itens = lote.romaneio_itens || [];
+        if (!itens.length) { alert('Nenhum item no romaneio.'); return; }
+
+        // Resumo por artigo/qualidade
+        const porArtigo = {};
+        itens.forEach(it => {
+            const art  = it.codigo_produto || '(sem artigo)';
+            const qual = it.qualidade || '—';
+            const m    = parseFloat(it.metros) || 0;
+            if (!porArtigo[art]) porArtigo[art] = {};
+            if (!porArtigo[art][qual]) porArtigo[art][qual] = { metros: 0, totalPecas: 0 };
+            porArtigo[art][qual].metros += m;
+            porArtigo[art][qual].totalPecas++;
+        });
+
+        const totalGeral = itens.reduce((s,it) => s + (parseFloat(it.metros)||0), 0);
+        const dataHoje   = new Date().toLocaleDateString('pt-BR');
+        const loteCodigo = 'LOTE-' + String(lote.codigo).padStart(6,'0');
+        const nfOf       = document.getElementById('of-numero')?.value.trim() || '(ainda não informada)';
+        const fmtN       = v => parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+        // Tabela resumo
+        let linhasResumo = '';
+        Object.entries(porArtigo).forEach(([art, quals]) => {
+            Object.entries(quals).forEach(([qual, dados]) => {
+                linhasResumo += `<tr>
+                    <td style="padding:7px 10px;border:1px solid #ccc;font-weight:600">${art}</td>
+                    <td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${qual}</td>
+                    <td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${dados.totalPecas}</td>
+                    <td style="padding:7px 10px;border:1px solid #ccc;text-align:right">${fmtN(dados.metros)} m</td>
+                </tr>`;
+            });
+        });
+
+        // Tabela detalhada peça a peça (ordenada por artigo)
+        const itensSorted = [...itens].sort((a,b) => (a.codigo_produto||'').localeCompare(b.codigo_produto||''));
+        let linhasPecas = '';
+        itensSorted.forEach((it, idx) => {
+            linhasPecas += `<tr>
+                <td style="padding:6px 10px;border:1px solid #ccc;text-align:center;font-weight:700;color:#1a237e">${idx+1}</td>
+                <td style="padding:6px 10px;border:1px solid #ccc;font-weight:600">${it.codigo_produto||'—'}</td>
+                <td style="padding:6px 10px;border:1px solid #ccc;text-align:center">${it.qualidade||'—'}</td>
+                <td style="padding:6px 10px;border:1px solid #ccc;text-align:right">${fmtN(it.metros)} m</td>
+                <td style="padding:6px 10px;border:1px solid #ccc;text-align:center;color:#999;font-size:11px">_________</td>
+            </tr>`;
+        });
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>Romaneio OF — ${loteCodigo}</title>
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 13px; color: #222; margin: 24px; }
+            h2 { font-size: 17px; margin-bottom: 2px; }
+            h3 { font-size: 13px; margin: 20px 0 6px; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+            .info { margin-bottom: 12px; color: #555; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; }
+            thead tr { background: #f0f0f0; }
+            th { padding: 8px 10px; border: 1px solid #ccc; text-align: left; font-size: 12px; }
+            tfoot tr { background: #d4edda; font-weight: 700; }
+            @media print { body { margin: 10px; } }
+        </style>
+        </head><body>
+        <h2>🏭 Romaneio para Revisão / Etiquetagem</h2>
+        <div class="info">
+            <strong>Lote:</strong> ${loteCodigo} &nbsp;|&nbsp;
+            <strong>OF:</strong> ${nfOf} &nbsp;|&nbsp;
+            <strong>Data:</strong> ${dataHoje} &nbsp;|&nbsp;
+            <strong>Total de peças:</strong> ${itens.length} &nbsp;|&nbsp;
+            <strong>Total metros:</strong> ${fmtN(totalGeral)} m
+        </div>
+
+        <h3>Resumo por Artigo</h3>
+        <table>
+            <thead><tr>
+                <th>Artigo</th>
+                <th style="width:110px;text-align:center">Qualidade</th>
+                <th style="width:70px;text-align:center">Peças</th>
+                <th style="width:120px;text-align:right">Metros</th>
+            </tr></thead>
+            <tbody>${linhasResumo}</tbody>
+            <tfoot><tr>
+                <td colspan="2" style="padding:7px 10px;border:1px solid #ccc">TOTAL</td>
+                <td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${itens.length}</td>
+                <td style="padding:7px 10px;border:1px solid #ccc;text-align:right">${fmtN(totalGeral)} m</td>
+            </tr></tfoot>
+        </table>
+
+        <h3>Ordem das Peças (para etiquetagem)</h3>
+        <table>
+            <thead><tr>
+                <th style="width:40px;text-align:center">#</th>
+                <th>Artigo</th>
+                <th style="width:110px;text-align:center">Qualidade</th>
+                <th style="width:120px;text-align:right">Metros</th>
+                <th style="width:110px;text-align:center">Etiqueta OK</th>
+            </tr></thead>
+            <tbody>${linhasPecas}</tbody>
+        </table>
+        <p style="margin-top:24px;font-size:11px;color:#999">Gerado pelo SIGRA em ${dataHoje}</p>
+        <script>window.onload = () => { window.print(); }<\/script>
+        </body></html>`;
+
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+    }
+
+    // Etapa 9 — SAC define forma de crédito
+    function selecionarForma(el) {
+        document.querySelectorAll('.radio-item').forEach(r => r.classList.remove('selecionado'));
+        el.classList.add('selecionado');
+    }
+
+    async function encaminharCreditoFinanceiro() {
+        const tipo_credito = document.querySelector('input[name="cr-forma"]:checked')?.value;
+        if (!tipo_credito) { alert('Selecione a forma de crédito.'); return; }
+        const descricao_credito = document.getElementById('cr-obs-sac')?.value.trim() || '';
+        if (!descricao_credito) { alert('Descreva o que foi tratado com o cliente.'); return; }
+        const contato_cliente = document.getElementById('cr-contato')?.value.trim() || '';
+        await avancarLote('aguardando_aprovacao_financeiro', {
+            tipo_credito,
+            contato_cliente:   contato_cliente || null,
+            descricao_credito: descricao_credito,
+        });
+    }
+
+    // Etapa 9 — Financeiro toma ciência
+    async function confirmarCienciaFinanceiro() {
+        const obs = document.getElementById('cr-fin-obs')?.value.trim() || '';
+        await avancarLote('aguardando_encerramento_comercial', {
+            observacoes_nf: obs || null,
+        });
+    }
+
+    // Etapa 10 — Comercial encerra o lote
+    async function encerrarLote() {
+        const descricao = document.getElementById('enc-desc')?.value.trim();
+        if (!descricao) { alert('Informe a descrição do encerramento.'); return; }
+        // Encerra cada reclamação do lote individualmente
+        const primeiraRec = lote.reclamacoes && lote.reclamacoes[0];
+        if (primeiraRec) {
+            const r = await api('POST', '/reclamacoes/' + primeiraRec.id + '/encerrar', { descricao });
+            if (!r.ok) { alert((r.dados && r.dados.erro) || 'Erro ao encerrar.'); return; }
+        }
+        // Marca o lote como concluído
+        await avancarLote('concluido', {});
+    }
+
+    // Etapa 7b — SAC reenviar para conferência
+    async function reenviarParaConferencia() {
+        const obs = document.getElementById('div-obs')?.value.trim();
+        if (!obs) { alert('Descreva o alinhamento com o cliente.'); return; }
+        await avancarLote('encaminhando_devolucao_aguardando_conferencia_material', {
+            observacoes_nf: obs,
+        });
+    }
+
+    // ===================================================
+    // HELPERS — cotações
+    // ===================================================
+    function buildCotacoesLinhas(cotacoes) {
+        if (!cotacoes || !cotacoes.length) return '';
+        return cotacoes.map(co =>
+            `<tr><td><input type="text" value="${co.transportadora || ''}" placeholder="Transportadora..." oninput="atualizarSelectTransp()" style="width:100%" /></td>` +
+            `<td><input type="number" value="${co.valor || ''}" placeholder="0,00" step="0.01" oninput="atualizarSelectTransp()" style="width:100%" /></td>` +
+            `<td><button type="button" onclick="removerLinhaCotacao(this)" style="background:none;border:none;cursor:pointer;color:#c62828">✕</button></td></tr>`
+        ).join('');
+    }
+
+    function addLinhaCotacao() {
+        const tbody = document.getElementById('dv-cotacoes-linhas');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="text" placeholder="Transportadora..." oninput="atualizarSelectTransp()" style="width:100%" /></td>' +
+            '<td><input type="number" placeholder="0,00" step="0.01" oninput="atualizarSelectTransp()" style="width:100%" /></td>' +
+            '<td><button type="button" onclick="removerLinhaCotacao(this)" style="background:none;border:none;cursor:pointer;color:#c62828">✕</button></td>';
+        tbody.appendChild(tr);
+    }
+
+    function getCotacoes() {
+        const tbody = document.getElementById('dv-cotacoes-linhas');
+        if (!tbody) return [];
+        return Array.from(tbody.rows).map(tr => {
+            const inp = tr.querySelectorAll('input');
+            return { transportadora: inp[0]?.value || '', valor: inp[1]?.value || '' };
+        }).filter(c => c.transportadora);
+    }
+
+    function removerLinhaCotacao(btn) {
+        btn.closest('tr').remove();
+        atualizarSelectTransp();
+    }
+
+    function atualizarSelectTransp() {
+        const sel = document.getElementById('dv-transp');
+        if (!sel || sel.tagName !== 'SELECT') return;
+        const cots = getCotacoes(), atual = sel.value;
+        sel.innerHTML = '<option value="">Selecione apos cotar...</option>' +
+            cots.map(c => `<option value="${c.transportadora}" ${atual === c.transportadora ? 'selected' : ''}>${c.transportadora}${c.valor ? ' — R$ ' + parseFloat(c.valor).toFixed(2).replace('.', ',') : ''}</option>`).join('');
+    }
+
+    // ===== CHAT DE DÚVIDAS AO SAC =====
+    // O lote usa a primeira reclamação vinculada como referência para o chat
+    function chatRecId() {
+        return lote && lote.reclamacoes && lote.reclamacoes[0]?.id;
+    }
+
+    async function chatCarregar() {
+        const recId = chatRecId();
+        if (!recId) return;
+        const r = await api('GET', '/reclamacoes/' + recId + '/duvidas');
+        if (!r.ok) return;
+        const msgs = r.dados.dados || r.dados || [];
+        const usuario = getUsuario();
+        const container = document.getElementById('chat-msgs');
+        if (!container) return;
+        if (!msgs.length) {
+            container.innerHTML = '<p style="color:#999;font-size:13px;text-align:center">Nenhuma mensagem ainda.<br><small>Use o campo abaixo para enviar uma dúvida ao SAC.</small></p>';
+            return;
+        }
+        container.innerHTML = msgs.map(m => {
+            const ehMinha = m.usuario_id === usuario.id;
+            const ehSac   = m.eh_resposta_sac;
+            const cls     = ehMinha ? 'minha' : (ehSac ? 'sac' : 'deles');
+            const hora    = new Date(m.criado_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            return `<div class="chat-msg ${cls}">
+                <div class="chat-balao">${m.mensagem.replace(/\n/g,'<br>')}</div>
+                <div class="chat-meta">${m.autor_nome||'—'} · ${hora}</div>
+            </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function chatEnviar() {
+        const recId = chatRecId();
+        if (!recId) { alert('Nenhuma reclamação vinculada ao lote.'); return; }
+        const texto = document.getElementById('chat-texto')?.value.trim();
+        if (!texto) return;
+        const btn = document.querySelector('#bloco-chat button');
+        if (btn) btn.disabled = true;
+        const r = await api('POST', '/reclamacoes/' + recId + '/duvidas', { mensagem: texto });
+        if (btn) btn.disabled = false;
+        if (!r.ok) { alert(r.dados?.erro || 'Erro ao enviar mensagem.'); return; }
+        document.getElementById('chat-texto').value = '';
+        await chatCarregar();
+        // Se status mudou, recarrega o lote
+        await carregar();
+    }
+
+    carregar();
+</script>
+</body>
+</html>
